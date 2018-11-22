@@ -21,16 +21,22 @@ def get_summary(url):
     res = CANDY.post(CONFIG['study_page'], data=data)
     study_soup = BeautifulSoup(res.text, 'html.parser')
     name = study_soup.find('dl', class_='content-a-title').find('dt').find('span').string
+    
     home_text = CANDY.get(url).text
     home_soup = BeautifulSoup(home_text, 'html.parser')
     chapter_names = []
-    for chapter_lable in home_soup.find('div', class_='vice-main-kcap')\
-        .find('ul')\
-        .children:
-        try:
-            chapter_names.insert(0, chapter_lable.find('div').find('span').string)
-        except:
-            pass
+    if home_soup.find('div', class_='vice-main-kcap'):
+        for chapter_lable in home_soup.find('div', class_='vice-main-kcap')\
+            .find('ul')\
+            .children:
+            try:
+                chapter_names.insert(0, chapter_lable.find('div').find('span').string)
+            except:
+                pass
+    else:
+        for chapter_lable in home_soup.find('div', id='accordion')\
+            .find_all('h3'):
+            chapter_names.insert(0, chapter_lable.text)
     
     dir_name = course_dir(name, '北京高校优质课程研究会')
 
