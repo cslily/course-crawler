@@ -2,7 +2,6 @@
 """网易公开课"""
 
 import time
-import xml.dom.minidom
 import requests
 
 from .utils import *
@@ -10,7 +9,7 @@ from bs4 import BeautifulSoup
 
 try:
     from Crypto.Cipher import AES
-except:
+except ImportError:
     from crypto.Cipher import AES # pip install pycryptodome
 
 CANDY = Crawler()
@@ -22,13 +21,14 @@ def get_summary(url):
     """从课程主页面获取信息"""
 
     res = CANDY.get(url).text
-    soup=BeautifulSoup(res,'html.parser')
+    soup = BeautifulSoup(res,'html.parser')
     links = []
     if re.match(r'https?://open.163.com/special/', url):
+        # 从课程主页解析各课程链接
         names = soup.find_all('div', class_='g-container')[1]
         organization = names.find('a').string.strip()
         course = names.find('span', class_='pos').string.strip()
-        list1 = soup.find('table', id='list1')
+        list1 = soup.find('table', id='list2')
         tds = list1.find_all('td', class_="u-ctitle")
         
         for td in tds:
@@ -36,6 +36,7 @@ def get_summary(url):
             links.append((a.get('href'), a.string))
 
     else:
+        # 从学习页面解析各课程链接（有的课程不含课程主页）
         names = soup.find('p', class_='bread').find_all('a', class_='f-c9')
         organization = names[0].string.strip()
         course = names[1].string.strip()
@@ -59,22 +60,19 @@ def parse_resource(resource):
     """解析资源地址和下载资源"""
 
     def open_decrypt(hex_string, t):
+        """将加密16进制字符串转化为真实url"""
         CRYKey = {1: b"4fxGZqoGmesXqg2o", 2: b"3fxVNqoPmesAqg2o"}
         aes = AES.new(CRYKey[t], AES.MODE_ECB)
         return str(aes.decrypt(bytes.fromhex(hex_string)),encoding='gbk',errors="ignore").replace('\x08','').replace('\x06', '')
 
-    def xmlnode2string(xml_node):
-        tag_name = xml_node.tagName
-        return xml_node.toxml('utf8').decode().replace('<{}>'.format(tag_name),'').replace('</{}>'.format(tag_name),'')
-    
-    def get_hex_urls(xml_node):
-        hex_urls_dict = {}
-        for node in xml_node.childNodes:
-            hex_urls_list = []
-            for url_hex_node in node.childNodes:
-                hex_urls_list.append(xmlnode2string(url_hex_node))
-            hex_urls_dict[node.tagName.lower()] = hex_urls_list
-        return hex_urls_dict
+    def update_hex_urls(node, hex_urls):
+        """从node中解析出来url信息，并更新hex_url"""
+        for child in node.children:
+            sp = child.name
+            if not hex_urls.get(sp):
+                hex_urls[sp] = {}
+            for hex_url_tag in child.children:
+                hex_urls[sp][hex_url_tag.name] = hex_url_tag.string
 
     link = resource.meta
     file_name = resource.file_name
@@ -83,45 +81,32 @@ def parse_resource(resource):
     res = CANDY.get(xml_url)
     res.encoding = 'gbk'
 
-    data = {
-        'name': '',
-        'encrypt': 1,
-        'flvurl': {},
-        'flvurl_origin': {},
-        'mp4url': {},
-        'mp4url_origin': {},
-        'protoVersion': 1,
-        'useMp4': 1,
-        'subs': {},
-        }
-    DOMTree = xml.dom.minidom.parseString(res.text)
-    data['name'] = xmlnode2string(DOMTree.getElementsByTagName('title')[0])
-    data['encrypt'] = int(xmlnode2string(DOMTree.getElementsByTagName('encrypt')[0]))
-    data['flvurl'] = get_hex_urls(DOMTree.getElementsByTagName('flvUrl')[0])
-    data['flvurl_origin'] = get_hex_urls(DOMTree.getElementsByTagName('flvUrlOrigin')[0])
-    data['mp4url'] = get_hex_urls(DOMTree.getElementsByTagName('playurl')[0])
-    data['mp4url_origin'] = get_hex_urls(DOMTree.getElementsByTagName('playurl_origin')[0])
-    data['protoVersion'] = int(xmlnode2string(DOMTree.getElementsByTagName('protoVersion')[0]))
-    data['useMp4'] = int(xmlnode2string(DOMTree.getElementsByTagName('useMp4')[0]))
-    for sub_node in DOMTree.getElementsByTagName('subs')[0].getElementsByTagName('sub'):
-        data['subs'][xmlnode2string(sub_node.getElementsByTagName('name')[0])] = xmlnode2string(sub_node.getElementsByTagName('url')[0])
+    # 解析xml数据
+    soup = BeautifulSoup(res.text,'lxml')
+    name = soup.find('title').string
+    encrypt = int(soup.find('encrypt').string)
+    hex_urls = {}
+    update_hex_urls(soup.find('flvurl'), hex_urls)
+    update_hex_urls(soup.find('flvurlorigin'), hex_urls)
+    update_hex_urls(soup.find('playurl'), hex_urls)
+    update_hex_urls(soup.find('playurl_origin'), hex_urls)
+    subs = {}
+    for sub in soup.find('subs'):
+        subs[sub.find('name').string] = sub.find('url').string
 
-    k = ''
-    # 先按照默认模式选择格式，待加入格式选择后再按需选择
-    if data['useMp4'] == 1:
-        ext = 'mp4'
-    else:
-        ext = 'flv'
-    k += ext + 'url'
-    if data['protoVersion'] == 2:
-        k += '_origin'
-
-    resolutions = ['shd', 'hd', 'sd', 'hd', 'shd']
-    for sp in resolutions[CONFIG['resolution']:]:
-        if data[k].get(sp):
-            hex_string = data[k][sp][0] # 有时好几个，先用第一个好了
-    video_url = open_decrypt(hex_string, data['encrypt'])
-    ext = '.' + video_url.split('.')[-1]
+    formats = ['mp4', 'flv']
+    resolutions = ['shd', 'hd', 'sd']
+    formats += reversed(formats)
+    resolutions += reversed(resolutions)
+    modes = ((sp, ext) for sp in resolutions[CONFIG['resolution']:] for ext in formats)
+    for sp, ext in modes:
+        if hex_urls.get(sp):
+            if hex_urls[sp].get(ext):
+                hex_url = hex_urls[sp][ext]
+                break
+    
+    video_url = open_decrypt(hex_url, encrypt)
+    ext = '.' + video_url.split('.')[-1] # 对扩展名进行修正，有的课程从mp4中解析出来的仍为flv
 
     res_print(file_name + ext)
     FILES['renamer'].write(re.search(r'(\w+\%s)'% ext, video_url).group(1), file_name, ext)
@@ -129,8 +114,8 @@ def parse_resource(resource):
     if not CONFIG['sub']:
         return
     WORK_DIR.change('Videos')
-    for subtitle_lang, subtitle_url in data['subs'].items():
-        if len(data['subs']) == 1:
+    for subtitle_lang, subtitle_url in subs.items():
+        if len(subs) == 1:
             sub_name = file_name + '.srt'
         else:
             sub_name = file_name + '_' + subtitle_lang + '.srt'
