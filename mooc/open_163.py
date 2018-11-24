@@ -96,9 +96,8 @@ def parse_resource(resource):
 
     formats = ['mp4', 'flv']
     resolutions = ['shd', 'hd', 'sd']
-    formats += reversed(formats)
-    resolutions += reversed(resolutions)
-    modes = ((sp, ext) for sp in resolutions[CONFIG['resolution']:] for ext in formats)
+    resolutions = resolutions[CONFIG['resolution']:] + list(reversed(resolutions[:CONFIG['resolution']]))
+    modes = ((sp, ext) for sp in resolutions for ext in formats)
     for sp, ext in modes:
         if hex_urls.get(sp):
             if hex_urls[sp].get(ext):
