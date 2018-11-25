@@ -90,6 +90,10 @@ def main():
     elif re.match(r'https?://www.icourses.cn/web/sword/portal/videoDetail', args.url):
         from mooc import icourses
         icourses.start(args.url, config)
+    elif re.match(r'https?://www.icourses.cn/sCourse/course_\d+.html', args.url) or \
+         re.match(r'https?://www.icourses.cn/web/sword/portal/shareDetails\?cId=', args.url):
+        from mooc import icourses_share
+        icourses_share.start(args.url, config)
     elif re.match(r'https?://www.livedu.com.cn/ispace4.0/moocxjkc/toKcView.do\?kcid=', args.url):
         from mooc import livedu
         cookies = store_cookies('livedu.json')
