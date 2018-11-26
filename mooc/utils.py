@@ -347,11 +347,9 @@ def aria2_download(aria2_path, workdir, webui=None, session=None):
     input_file = os.path.join(workdir, 'Videos.txt')
 
     if webui:
-        cmd = r'"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"' \
-                  ' --flag-switches-begin' \
-                  ' --flag-switches-end' \
-                  ' %s' % webui
-        subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        import webbrowser
+        if not webbrowser.open(webui):
+            print('自动打开aria2-webui失败，请手动打开...')
     
     cmd = '"%s"' \
           ' --enable-rpc' \
@@ -368,4 +366,4 @@ def aria2_download(aria2_path, workdir, webui=None, session=None):
                ' --save-session-interval=60' % session
     print('正在使用aria2下载视频，请不要在下载过程中关闭此窗口~')
     subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
-    print('下载已全部完成~')
+    print('aria2已关闭~')
