@@ -61,7 +61,7 @@ def start(url, config):
     WORK_DIR = WorkingDir(CONFIG['dir'], course_info[0])
 
     WORK_DIR.change('Videos')
-    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}')) if SYS == 'nt' else Renamer(WORK_DIR.file('Rename.sh'))
+    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['videos'] = ClassicFile(WORK_DIR.file('Videos.txt'))
     if CONFIG['dpl']:
         FILES['playlist'] = Playlist()
