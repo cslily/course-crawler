@@ -51,18 +51,16 @@ def parse_resource(resource):
             }).json()
 
             resolutions = [3, 2, 1]
-
-            find = False
             for sp in resolutions[CONFIG['resolution']:]:
                 # TODO: 增加视频格式选择
                 for video in data['result']['videos']:
                     if video['quality'] == sp and video['format'] == 'mp4':
                         url = video['videoUrl']
                         ext = '.mp4'
-                        find = True
                         break
-                if find:
-                    break
+                else:
+                    continue
+                break
             res_print(file_name + ext)
             FILES['renamer'].write(re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
             FILES['video'].write_string(url)
@@ -82,7 +80,6 @@ def parse_resource(resource):
             FILES['renamer'].write(re.search(r'(\w+\.((m3u8)|(mp4)|(flv)))', url).group(1), file_name, ext)
             FILES['video'].write_string(url)
             resource.ext = ext
-        
 
         if not CONFIG['sub']:
             return
@@ -208,7 +205,7 @@ def start(url, config, cookies):
 
     WORK_DIR = WorkingDir(CONFIG['dir'], course_info[1])
     WORK_DIR.change('Videos')
-    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.bat'))
+    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['video'] = ClassicFile(WORK_DIR.file('Videos.txt'))
 
     get_resource(course_info[0])

@@ -158,7 +158,7 @@ def start(url, config, cookies=None):
     WORK_DIR = WorkingDir(CONFIG['dir'], course_info[1])
 
     WORK_DIR.change('Videos')
-    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.bat'))
+    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['video'] = ClassicFile(WORK_DIR.file('Videos.txt'))
 
     # 获得资源

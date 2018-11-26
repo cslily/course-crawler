@@ -149,16 +149,19 @@ class Playlist(ClassicFile):
         """传入一个 Video 类的对象，将该对象的信息写入播放列表"""
 
         self._count += 1
-        self.write_string('%d*file*Videos\%s%s' % (self._count, video.file_name, video.ext))
+        self.write_string('%d*file*Videos\\%s%s' % (self._count, video.file_name, video.ext))
         self.write_string('%d*title*%s %s\n' % (self._count, '.'.join(video.id.split('.')[:-1]), video.name))
 
 
 class Renamer(ClassicFile):
     """重命名批处理文件类"""
 
+    ext = 'bat' if SYS == 'nt' else 'sh'
+
     def __init__(self, file):
         """初始化文件，并写入调用 UTF-8 代码页的命令"""
 
+        file = file.format(**{'ext': Renamer.ext})
         super().__init__(file)
         if SYS == 'nt':
             self.write_string('CHCP 65001\n')
@@ -339,10 +342,12 @@ def parse_res_list(res_list, file, *operator):
             res.operation(*operator)
 
 def aria2_download(aria2_path, workdir, webui=None, session=None):
+    """传入aria2的路径信息，调用aria2下载视频"""
+
     input_file = os.path.join(workdir, 'Videos.txt')
 
     if webui:
-        cmd = '"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"' \
+        cmd = r'"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"' \
                   ' --flag-switches-begin' \
                   ' --flag-switches-end' \
                   ' %s' % webui
@@ -361,5 +366,6 @@ def aria2_download(aria2_path, workdir, webui=None, session=None):
     if session:
         cmd += ' --save-session=%s' \
                ' --save-session-interval=60' % session
-    print('正在使用aria2下载视频...')
+    print('正在使用aria2下载视频，请不要在下载过程中关闭此窗口~')
     subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+    print('下载已全部完成~')

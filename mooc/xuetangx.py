@@ -196,7 +196,7 @@ def start(url, config, cookies=None):
 
     WORK_DIR = WorkingDir(CONFIG['dir'], course_name)
     WORK_DIR.change('Videos')
-    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.bat'))
+    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['videos'] = ClassicFile(WORK_DIR.file('Videos.txt'))
 
     handout = url.rstrip('about') + 'info'

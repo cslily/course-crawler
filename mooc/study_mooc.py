@@ -67,18 +67,18 @@ def parse_resource(resource):
             'signature': signature,
             'clientType': '1'
         }).json()
+
         resolutions = [3, 2, 1]
-        find = False
         for sp in resolutions[CONFIG['resolution']:]:
             # TODO: 增加视频格式选择
             for video in data['result']['videos']:
                 if video['quality'] == sp and video['format'] == 'mp4':
                     url = video['videoUrl']
                     ext = '.mp4'
-                    find = True
                     break
-            if find:
-                break
+            else:
+                continue
+            break
         res_print(file_name + ext)
         FILES['renamer'].write(re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
         FILES['video'].write_string(url)
@@ -213,7 +213,7 @@ def start(url, config, cookies=None):
     get_announce(course_info[0])
 
     WORK_DIR.change('Videos')
-    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.bat'))
+    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['video'] = ClassicFile(WORK_DIR.file('Videos.txt'))
 
     # 获得资源
