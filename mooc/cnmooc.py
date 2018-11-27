@@ -112,7 +112,7 @@ def start(url, config, cookies=None):
 
     global WORK_DIR
     CONFIG.update(config)
-    CONFIG['dpl'] = config['dpl'] and SYS == 'nt'
+    CONFIG['dpl'] = config['dpl'] and SYS == 'Windows'
 
     CANDY.set_cookies(cookies)
 

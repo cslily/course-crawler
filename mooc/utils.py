@@ -4,9 +4,10 @@
 import re
 import os
 import requests
+import platform
 import subprocess
 
-SYS = os.name
+SYS = platform.system()
 
 
 class Resource(object):
@@ -156,20 +157,20 @@ class Playlist(ClassicFile):
 class Renamer(ClassicFile):
     """重命名批处理文件类"""
 
-    ext = 'bat' if SYS == 'nt' else 'sh'
+    ext = 'bat' if SYS == 'Windows' else 'sh'
 
     def __init__(self, file):
         """初始化文件，并写入调用 UTF-8 代码页的命令"""
 
         file = file.format(**{'ext': Renamer.ext})
         super().__init__(file)
-        if SYS == 'nt':
+        if SYS == 'Windows':
             self.write_string('CHCP 65001\n')
 
     def write(self, origin_name, file_name, ext='.mp4'):
         """传入一个文件的原始名字（URL 中的文件名）和一个新的文件名"""
 
-        if SYS == 'nt':
+        if SYS == 'Windows':
             self.write_string('REN "%s" "%s%s"' % (origin_name, file_name, ext))
         else:
             self.write_string('mv "%s" "%s%s"' % (origin_name, file_name, ext))
@@ -331,7 +332,12 @@ def parse_res_list(res_list, file, *operator):
         with open(file, 'w', encoding='utf_8') as f:
             for res in res_list:
                 f.write(str(res) + '\n')
-        os.startfile(file)
+        if SYS == 'Windows':
+            os.startfile(file)
+        elif SYS == 'Linux':
+            subprocess.run('gedit "%s"' % file, shell=True, stdout=subprocess.PIPE)
+        elif SYS == 'Darwin':
+            subprocess.run('open -t "%s"' % file, shell=True, stdout=subprocess.PIPE)
         input('修改完文件名后按回车继续。')
         with open(file, encoding='utf_8') as f:
             for res in res_list:
@@ -342,14 +348,14 @@ def parse_res_list(res_list, file, *operator):
             res.operation(*operator)
 
 def aria2_download(aria2_path, workdir, webui=None, session=None):
-    """传入aria2的路径信息，调用aria2下载视频"""
+    """传入 aria2 和其 webui 、 session 的路径信息，调用 aria2 下载视频"""
 
     input_file = os.path.join(workdir, 'Videos.txt')
 
     if webui:
         import webbrowser
         if not webbrowser.open(webui):
-            print('自动打开aria2-webui失败，请手动打开...')
+            print('自动打开 aria2-webui 失败，请手动打开...')
     
     cmd = '"%s"' \
           ' --enable-rpc' \
@@ -364,6 +370,6 @@ def aria2_download(aria2_path, workdir, webui=None, session=None):
     if session:
         cmd += ' --save-session=%s' \
                ' --save-session-interval=60' % session
-    print('正在使用aria2下载视频，请不要在下载过程中关闭此窗口~')
+    print('正在使用 aria2 下载视频，请不要在下载过程中关闭此窗口~')
     subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
-    print('aria2已关闭~')
+    print('aria2 已关闭~')
