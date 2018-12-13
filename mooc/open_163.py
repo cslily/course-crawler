@@ -102,10 +102,11 @@ def parse_resource(resource):
         if hex_urls.get(sp):
             if hex_urls[sp].get(ext):
                 hex_url = hex_urls[sp][ext]
-                break
-    
-    video_url = open_decrypt(hex_url, encrypt)
-    ext = '.' + video_url.split('.')[-1] # 对扩展名进行修正，有的课程从mp4中解析出来的仍为flv
+                video_url = open_decrypt(hex_url, encrypt)
+                ext = video_url.split('.')[-1] # 对扩展名进行修正，有的课程从mp4中解析出来的仍为flv
+                if ext in formats:
+                    ext = '.' + ext
+                    break
 
     res_print(file_name + ext)
     FILES['renamer'].write(re.search(r'(\w+\%s)'% ext, video_url).group(1), file_name, ext)
