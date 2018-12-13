@@ -18,7 +18,7 @@ def get_summary(url):
     term_id = re.search(r'termId : "(\d+)"', res).group(1)
     names = re.findall(r'name:"(.+)"', res)
 
-    dir_name = course_dir(names[0], names[1])
+    dir_name = course_dir(*names[:2])
 
     print(dir_name)
     CONFIG['term_id'] = term_id
@@ -32,7 +32,7 @@ def parse_resource(resource):
                  'httpSessionId': '5531d06316b34b9486a6891710115ebc', 'c0-scriptName': 'CourseBean',
                  'c0-methodName': 'getLessonUnitLearnVo', 'c0-id': '0', 'c0-param0': 'number:' + resource.meta[0],
                  'c0-param1': 'number:' + resource.meta[1], 'c0-param2': 'number:0',
-                 'c0-param3': 'number:' + resource.meta[2], 'batchId': str(int(time.time() * 1000))}
+                 'c0-param3': 'number:' + resource.meta[2], 'batchId': str(int(time.time()) * 1000)}
     res = CANDY.post('https://www.icourse163.org/dwr/call/plaincall/CourseBean.getLessonUnitLearnVo.dwr',
                      data=post_data).text
 
@@ -65,7 +65,7 @@ def parse_resource(resource):
             FILES['renamer'].write(re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
             FILES['video'].write_string(url)
             resource.ext = ext
-        
+
         else:
             resolutions = ['Shd', 'Hd', 'Sd']
             for sp in resolutions[CONFIG['resolution']:]:
@@ -122,7 +122,7 @@ def get_resource(term_id):
 
     post_data = {'callCount': '1', 'scriptSessionId': '${scriptSessionId}190', 'c0-scriptName': 'CourseBean',
                  'c0-methodName': 'getMocTermDto', 'c0-id': '0', 'c0-param0': 'number:' + term_id,
-                 'c0-param1': 'number:0', 'c0-param2': 'boolean:true', 'batchId': str(int(time.time() * 1000))}
+                 'c0-param1': 'number:0', 'c0-param2': 'boolean:true', 'batchId': str(int(time.time()) * 1000)}
     res = CANDY.post('https://www.icourse163.org/dwr/call/plaincall/CourseBean.getMocTermDto.dwr',
                      data=post_data).text.encode('utf_8').decode('unicode_escape')
 
@@ -153,8 +153,8 @@ def get_resource(term_id):
                     pdf_list.append(Document(counter, pdf[3], pdf))
             counter.reset()
 
-            rich_text = re.findall(r'contentId=(\d+).+contentType=(4).+id=(\d+).+jsonContent=(.+?";);.+lessonId=' +
-                                   lesson[0] + r'.+name="([\s\S]+?)"', res)
+            rich_text = re.findall(r'contentId=(\d+).+contentType=(4).+id=(\d+).+jsonContent=(.+?);.+lessonId=' +
+                                   lesson[0] + r'.+name="([\s\S]]+?)"', res)
             for text in rich_text:
                 counter.add(2)
                 outline.write(text[4], counter, 2, sign='+')
@@ -196,21 +196,23 @@ def start(url, config, cookies):
     global WORK_DIR
     CANDY.set_cookies(cookies)
     CONFIG.update(config)
+
     if cookies.get('NTESSTUDYSI'):
         CONFIG['hasToken'] = True
         CONFIG['token'] = cookies.get('NTESSTUDYSI')
     else:
         CONFIG['hasToken'] = False
-    course_info = get_summary(url)
+    term_id, dir_name = get_summary(url)
 
-    WORK_DIR = WorkingDir(CONFIG['dir'], course_info[1])
+    WORK_DIR = WorkingDir(CONFIG['dir'], dir_name)
     WORK_DIR.change('Videos')
     FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['video'] = ClassicFile(WORK_DIR.file('Videos.txt'))
 
-    get_resource(course_info[0])
+    get_resource(term_id)
 
     if CONFIG['aria2']:
         del FILES['video']
         WORK_DIR.change('Videos')
         aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+
