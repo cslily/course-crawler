@@ -2,15 +2,10 @@
 """网易公开课"""
 
 import time
-import requests
 
 from .utils import *
 from bs4 import BeautifulSoup
-
-try:
-    from Crypto.Cipher import AES
-except ImportError:
-    from crypto.Cipher import AES # pip install pycryptodome
+from Crypto.Cipher import AES
 
 CANDY = Crawler()
 CONFIG = {}
@@ -30,7 +25,7 @@ def get_summary(url):
         course = names.find('span', class_='pos').string.strip()
         list1 = soup.find('table', id='list2')
         tds = list1.find_all('td', class_="u-ctitle")
-        
+
         for td in tds:
             a = td.find('a')
             links.append((a.get('href'), a.string))
@@ -106,6 +101,7 @@ def parse_resource(resource):
                 ext = video_url.split('.')[-1] # 对扩展名进行修正，有的课程从mp4中解析出来的仍为flv
                 if ext in formats:
                     ext = '.' + ext
+                    resource.ext = ext
                     break
 
     res_print(file_name + ext)
@@ -140,7 +136,7 @@ def get_resource(links):
         WORK_DIR.change('Videos')
         if CONFIG['dpl']:
             playlist = Playlist()
-            parse_res_list(video_list, rename, playlist.write, parse_resource)
+            parse_res_list(video_list, rename, parse_resource, playlist.write)
         else:
             parse_res_list(video_list, rename, parse_resource)
 
@@ -165,6 +161,7 @@ def start(url, config, cookies=None):
     get_resource(course_info[0])
 
     if CONFIG['aria2']:
-        del FILES['video']
+        for file in ['video', 'renamer']:
+            del FILES[file]
         WORK_DIR.change('Videos')
         aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
