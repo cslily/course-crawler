@@ -93,7 +93,7 @@ def parse_resource(resource):
 
 def get_resource(course_id):
     """获取各种资源"""
-    
+
     outline = Outline()
     counter = Counter()
 
@@ -197,6 +197,7 @@ def start(url, config, cookies=None):
     get_resource(course_info[0])
 
     if CONFIG['aria2']:
-        del FILES['video']
+        for file in list(FILES.keys()):
+            del FILES[file]
         WORK_DIR.change('Videos')
         aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])

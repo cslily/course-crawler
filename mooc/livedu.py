@@ -21,7 +21,7 @@ def get_summary(url):
     res = CANDY.post(CONFIG['study_page'], data=data)
     study_soup = BeautifulSoup(res.text, 'html.parser')
     name = study_soup.find('dl', class_='content-a-title').find('dt').find('span').string
-    
+
     home_text = CANDY.get(url).text
     home_soup = BeautifulSoup(home_text, 'html.parser')
     chapter_names = []
@@ -37,7 +37,7 @@ def get_summary(url):
         for chapter_lable in home_soup.find('div', id='accordion')\
             .find_all('h3'):
             chapter_names.insert(0, chapter_lable.text)
-    
+
     dir_name = course_dir(name, '北京高校优质课程研究会')
 
     print(dir_name)
@@ -124,7 +124,7 @@ def get_resource(course_id):
                 video_url = f'http://video.livedu.com.cn/{video_params[1]}?{video_params[0]}'
                 outline.write(video_name, counter, 2, sign='#')
                 video_list.append(Video(counter, video_name, video_url))
-            
+
             # GET pdf url
             pdf_iframe = resource_div.find('iframe', attrs={'name':'pdfContainer'})
             if pdf_iframe:
@@ -134,7 +134,7 @@ def get_resource(course_id):
                 outline.write(pdf_name, counter, 2, sign='*')
                 if CONFIG['doc']:
                     pdf_list.append(Document(counter, pdf_name, pdf_url))
-            
+
             # GET test text
             test_div = study_box.find('div', class_='zy-a-list')
             if test_div:
@@ -181,6 +181,7 @@ def start(url, config, cookies=None):
     get_resource(course_info[0])
 
     if CONFIG['aria2']:
-        del FILES['video']
+        for file in list(FILES.keys()):
+            del FILES[file]
         WORK_DIR.change('Videos')
         aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
