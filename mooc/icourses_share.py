@@ -14,10 +14,11 @@ def get_summary(url):
     if re.match(r'https?://www.icourses.cn/web/sword/portal/shareDetails\?cId=(\d+)', url):
         course_id = re.match(r'https?://www.icourses.cn/web/sword/portal/shareDetails\?cId=(\d+)', url).group(1)
         url = 'http://www.icourses.cn/sCourse/course_{}.html'.format(course_id)
+    else:
+        course_id = re.match(r'https?://www.icourses.cn/sCourse/course_(\d+).html', url).group(1)
     res = CANDY.get(url)
     res.encoding = 'utf8'
     soup = BeautifulSoup(res.text, 'lxml')
-    print(soup)
     name = soup.find('div', class_='course-introduction-infor').find('div', class_='course-title').p.string
 
     dir_name = course_dir(name, '爱课程资源共享课')
@@ -36,7 +37,7 @@ def parse_resource(resource):
         video_urls['sd'] = resource.meta['fullResUrl']
         if resource.meta.get('fullResUrl2'):
             video_urls['hd'] = resource.meta['fullResUrl2']
-        
+
         resolutions = ['shd', 'hd', 'sd']
         for sp in resolutions[CONFIG['resolution']:]:
             if video_urls.get(sp):
@@ -81,23 +82,26 @@ def get_resource(course_id):
         outline.write(chapter_name, counter, 0)
 
         # 章前导读
-        important = chapter.find('a', attrs = {'title': '重点难点'}).attrs['data-url']
-        instructional_design = chapter.find('a', attrs = {'title': '教学设计'}).attrs['data-url']
-        exam_id = chapter.find('a', attrs = {'title': '评价考核'}).attrs['data-id']
-        exam_contents = requests.post('http://www.icourses.cn/web//sword/common/getTextBody', data = {'id': exam_id}).text
-        textbook_id = chapter.find('a', attrs = {'title': '教材内容'}).attrs['data-id']
-        textbook_contents = requests.post('http://www.icourses.cn/web//sword/common/getTextBody', data = {'id': textbook_id}).text
-        WORK_DIR.change('Introduction')
-        outline.write('重点难点', counter, 2, sign='*')
-        CANDY.download_bin(important, WORK_DIR.file('%s 重点难点.html') % counter)
-        outline.write('教学设计', counter, 2, sign='*')
-        CANDY.download_bin(instructional_design, WORK_DIR.file('%s 教学设计.html') % counter)
-        outline.write('评价考核', counter, 2, sign='+')
-        with open(WORK_DIR.file('%s 评价考核.html' % counter), 'w', encoding='utf_8') as file:
-            file.write(exam_contents)
-        outline.write('教材内容', counter, 2, sign='+')
-        with open(WORK_DIR.file('%s 教材内容.html' % counter), 'w', encoding='utf_8') as file:
-            file.write(textbook_contents)
+        try:
+            important = chapter.find('a', attrs = {'title': '重点难点'}).attrs['data-url']
+            instructional_design = chapter.find('a', attrs = {'title': '教学设计'}).attrs['data-url']
+            exam_id = chapter.find('a', attrs = {'title': '评价考核'}).attrs['data-id']
+            exam_contents = requests.post('http://www.icourses.cn/web//sword/common/getTextBody', data = {'id': exam_id}).text
+            textbook_id = chapter.find('a', attrs = {'title': '教材内容'}).attrs['data-id']
+            textbook_contents = requests.post('http://www.icourses.cn/web//sword/common/getTextBody', data = {'id': textbook_id}).text
+            WORK_DIR.change('Introduction')
+            outline.write('重点难点', counter, 2, sign='*')
+            CANDY.download_bin(important, WORK_DIR.file('%s 重点难点.html') % counter)
+            outline.write('教学设计', counter, 2, sign='*')
+            CANDY.download_bin(instructional_design, WORK_DIR.file('%s 教学设计.html') % counter)
+            outline.write('评价考核', counter, 2, sign='+')
+            with open(WORK_DIR.file('%s 评价考核.html' % counter), 'w', encoding='utf_8') as file:
+                file.write(exam_contents)
+            outline.write('教材内容', counter, 2, sign='+')
+            with open(WORK_DIR.file('%s 教材内容.html' % counter), 'w', encoding='utf_8') as file:
+                file.write(textbook_contents)
+        except:
+            pass
 
         lessons = chapter.find('ul', class_='chapter-body-l').contents
         for lesson in lessons:
@@ -113,7 +117,7 @@ def get_resource(course_id):
                 lesson_id = lesson_info.attrs['data-secid']
                 lesson_name = lesson_info.text.replace('\n', '')
             rej = requests.post('http://www.icourses.cn/web//sword/portal/getRess', data = {'sectionId': lesson_id}).json()
-            
+
             outline.write(lesson_name, counter, 1)
 
             for resource in rej['model']['listRes']:
@@ -165,6 +169,7 @@ def start(url, config, cookies=None):
     get_resource(course_info[0])
 
     if CONFIG['aria2']:
-        del FILES['video']
+        for file in list(FILES.keys()):
+            del FILES[file]
         WORK_DIR.change('Videos')
         aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
