@@ -2,6 +2,7 @@
 """中国大学MOOC"""
 
 import time
+import json
 from .utils import *
 
 CANDY = Crawler()
@@ -125,7 +126,7 @@ def get_resource(term_id):
                  'c0-param1': 'number:0', 'c0-param2': 'boolean:true', 'batchId': str(int(time.time()) * 1000)}
     res = CANDY.post('https://www.icourse163.org/dwr/call/plaincall/CourseBean.getMocTermDto.dwr',
                      data=post_data).text.encode('utf_8').decode('unicode_escape')
-
+    
     chapters = re.findall(r'homeworks=\w+;.+id=(\d+).+name="([\s\S]+?)";', res)
     for chapter in chapters:
         counter.add(0)
@@ -173,7 +174,7 @@ def get_resource(term_id):
                         CANDY.download_bin('https://www.icourse163.org/course/attachment.htm',
                                            WORK_DIR.file(file_name), params=params)
             counter.reset()
-
+    
     if video_list:
         rename = WORK_DIR.file('Names.txt') if CONFIG['rename'] else False
         WORK_DIR.change('Videos')
@@ -189,6 +190,76 @@ def get_resource(term_id):
         WORK_DIR.change('Texts')
         parse_res_list(rich_text_list, None, parse_resource)
 
+def get_discussion(term_id, save_path):
+    """获取讨论区内容"""
+
+    post_data = {'callCount': '1', 
+             'scriptSessionId': '${scriptSessionId}190',
+             'c0-scriptName': 'PostBean',
+             'c0-methodName': 'getAllPostsPagination',
+             'c0-id': '0',
+             'c0-param0': 'number:' + term_id,
+             'c0-param1': 'string:',
+             'c0-param2': 'number:1',
+             'c0-param3': 'number:1',
+             'c0-param4': 'number:20',
+             'c0-param5': 'boolean:false',
+             'c0-param6': 'null:null',
+             'batchId': str(int(time.time()) * 1000)}
+    res = CANDY.post('https://www.icourse163.org/dwr/call/plaincall/PostBean.getAllPostsPagination.dwr',
+                 data=post_data).text.encode('utf_8').decode('unicode_escape')
+
+    questions =  re.findall(r'id=(\d+).+title="([\s\S]+?)"?;', res)
+    
+    content_data = {'callCount': '1', 
+             'scriptSessionId': '${scriptSessionId}190',
+             'c0-scriptName': 'PostBean',
+             'c0-methodName': 'getPaginationReplys',
+             'c0-id': '0',
+             'c0-param0': '',
+             'c0-param1': 'number:2',
+             'c0-param2': 'number:1',
+             'batchId': str(int(time.time()) * 1000)}
+
+    discription_data = {'callCount': '1', 
+             'scriptSessionId': '${scriptSessionId}190',
+             'c0-scriptName': 'PostBean',
+             'c0-methodName': 'getPostDetailById',
+             'c0-id': '0',
+             'c0-param0': '',
+             'batchId': str(int(time.time()) * 1000)}
+
+    save_discussion_list = []
+    for questionId in questions:
+        print("====>拉取问题 %s" % questionId[1])
+        content_data['c0-param0'] = "number:"+questionId[0]
+        discription_data['c0-param0'] = "number:"+questionId[0]
+
+        resData = CANDY.post('https://www.icourse163.org/dwr/call/plaincall/PostBean.getPaginationReplys.dwr',
+                 data=content_data).text.encode('utf_8').decode('unicode_escape')
+
+        #每个问题的回答
+        answers = re.findall(r'content="([\s\S]+?)";.[\s\S]+?nickName="([\s\S]+?)";', resData)
+        
+        #具体问题内容
+        resDiscription = CANDY.post('https://www.icourse163.org/dwr/call/plaincall/PostBean.getPostDetailById.dwr',
+                    data=discription_data).text.encode('utf_8').decode('unicode_escape')
+
+        questionContent = re.findall(r'content:"([\s\S]+?)",', resDiscription)[0]
+        questionTitle = questionId[1]
+
+        #转化为dict
+        save_dict = {"question": questionTitle,
+                    "questionContent":questionContent, 
+                    "answers":answers}
+        save_discussion_list.append(save_dict)
+
+    with open(save_path,"w",encoding="utf-8") as f:
+        json.dump(save_discussion_list,f,ensure_ascii=False)
+        
+
+
+
 
 def start(url, config, cookies):
     """调用接口函数"""
@@ -202,14 +273,25 @@ def start(url, config, cookies):
         CONFIG['token'] = cookies.get('NTESSTUDYSI')
     else:
         CONFIG['hasToken'] = False
+
+    #输出配置
+    print(CONFIG)
+
     term_id, dir_name = get_summary(url)
 
     WORK_DIR = WorkingDir(CONFIG['dir'], dir_name)
+    FILES['discussion'] = WORK_DIR.file('discussion.json')
     WORK_DIR.change('Videos')
     FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['video'] = ClassicFile(WORK_DIR.file('Videos.txt'))
 
     get_resource(term_id)
+
+    if CONFIG['discussion']:
+        # 拉取讨论区
+        print("====>开始拉取讨论区")
+        get_discussion(term_id, FILES['discussion'])
+
 
     if CONFIG['aria2']:
         for file in list(FILES.keys()):

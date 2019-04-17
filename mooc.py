@@ -53,6 +53,7 @@ def main():
     parser.add_argument('--no-sub', action='store_false', help='不下载字幕')
     parser.add_argument('--no-file', action='store_false', help='不下载附件')
     parser.add_argument('--no-text', action='store_false', help='不下载富文本')
+    parser.add_argument('--no-discussion', action='store_false', help='不下载讨论区')
     parser.add_argument('--no-dpl', action='store_false', help='不生成播放列表')
     parser.add_argument('--aria2', default=None, help='aria2路径，配置后自动调用aria2下载视频')
     parser.add_argument('--aria2-webui', default=None, help='aria2-webui路径，配置后自动开启webui')
@@ -61,8 +62,8 @@ def main():
     args = parser.parse_args()
     resolutions = ['shd', 'hd', 'sd']
 
-    config = {'doc': args.no_doc, 'sub': args.no_sub, 'file': args.no_file, 'text': args.no_text, 'dpl': args.no_dpl,
-              'cookies': args.c, 'rename': args.inter, 'dir': args.d, 'resolution': resolutions.index(args.r.lower()),
+    config = {'doc': args.no_doc, 'sub': args.no_sub, 'file': args.no_file, 'text': args.no_text,'discussion':args.no_discussion,
+              'dpl': args.no_dpl,'cookies': args.c, 'rename': args.inter, 'dir': args.d, 'resolution': resolutions.index(args.r.lower()),
               'aria2': args.aria2, 'aria2-webui': args.aria2_webui, 'aria2-session': args.aria2_session}
 
     if re.match(r'https?://www.icourse163.org/(spoc/)?(course|learn)/', args.url):
