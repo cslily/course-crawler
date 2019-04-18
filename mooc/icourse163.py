@@ -237,7 +237,7 @@ def get_discussion(ids, save_path):
              'c0-id': '0',
              'c0-param0': '',
              'batchId': str(int(time.time()) * 1000)}
-    print(questions)
+    #print(questions)
     save_discussion_list = []
     for questionId in questions:
         print("====>拉取问题 %s" % questionId[1])
