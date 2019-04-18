@@ -18,6 +18,8 @@ def get_summary(url):
 
     term_id = re.search(r'termId : "(\d+)"', res).group(1)
     names = re.findall(r'name:"(.+)"', res)
+    #ids = re.search(r'id : "(\d+)",\ncourse', res).group(1)
+    #print(ids)
 
     dir_name = course_dir(*names[:2])
 
@@ -290,7 +292,7 @@ def start(url, config, cookies):
     FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['video'] = ClassicFile(WORK_DIR.file('Videos.txt'))
 
-    #get_resource(term_id)
+    get_resource(term_id)
 
     if CONFIG['discussion']:
         # 拉取讨论区
