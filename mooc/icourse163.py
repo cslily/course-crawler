@@ -192,25 +192,30 @@ def get_resource(term_id):
 
 def get_discussion(term_id, save_path):
     """获取讨论区内容"""
+    questions = []
+    question = []
+    start = 1
+    while len(question) or start==1:
+        post_data = {'callCount': '1', 
+                'scriptSessionId': '${scriptSessionId}190',
+                'c0-scriptName': 'PostBean',
+                'c0-methodName': 'getAllPostsPagination',
+                'c0-id': '0',
+                'c0-param0': 'number:' + term_id,
+                'c0-param1': 'string:',
+                'c0-param2': 'number:1',
+                'c0-param3': 'string:' + str(start),
+                'c0-param4': 'number:20',
+                'c0-param5': 'boolean:false',
+                'c0-param6': 'null:null',
+                'batchId': str(int(time.time()) * 1000)}
+        res = CANDY.post('https://www.icourse163.org/dwr/call/plaincall/PostBean.getAllPostsPagination.dwr',
+                    data=post_data).text.encode('utf_8').decode('unicode_escape')
 
-    post_data = {'callCount': '1', 
-             'scriptSessionId': '${scriptSessionId}190',
-             'c0-scriptName': 'PostBean',
-             'c0-methodName': 'getAllPostsPagination',
-             'c0-id': '0',
-             'c0-param0': 'number:' + term_id,
-             'c0-param1': 'string:',
-             'c0-param2': 'number:1',
-             'c0-param3': 'number:1',
-             'c0-param4': 'number:20',
-             'c0-param5': 'boolean:false',
-             'c0-param6': 'null:null',
-             'batchId': str(int(time.time()) * 1000)}
-    res = CANDY.post('https://www.icourse163.org/dwr/call/plaincall/PostBean.getAllPostsPagination.dwr',
-                 data=post_data).text.encode('utf_8').decode('unicode_escape')
+        question =  re.findall(r'id=(\d+).+title="([\s\S]+?)"?;', res)
+        questions += question
+        start+=1
 
-    questions =  re.findall(r'id=(\d+).+title="([\s\S]+?)"?;', res)
-    
     content_data = {'callCount': '1', 
              'scriptSessionId': '${scriptSessionId}190',
              'c0-scriptName': 'PostBean',
@@ -228,7 +233,7 @@ def get_discussion(term_id, save_path):
              'c0-id': '0',
              'c0-param0': '',
              'batchId': str(int(time.time()) * 1000)}
-
+    print(questions)
     save_discussion_list = []
     for questionId in questions:
         print("====>拉取问题 %s" % questionId[1])
@@ -278,14 +283,14 @@ def start(url, config, cookies):
     print(CONFIG)
 
     term_id, dir_name = get_summary(url)
-
+    print("term id: " + str(term_id))
     WORK_DIR = WorkingDir(CONFIG['dir'], dir_name)
     FILES['discussion'] = WORK_DIR.file('discussion.json')
     WORK_DIR.change('Videos')
     FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['video'] = ClassicFile(WORK_DIR.file('Videos.txt'))
 
-    get_resource(term_id)
+    #get_resource(term_id)
 
     if CONFIG['discussion']:
         # 拉取讨论区
