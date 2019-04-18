@@ -18,14 +18,15 @@ def get_summary(url):
 
     term_id = re.search(r'termId : "(\d+)"', res).group(1)
     names = re.findall(r'name:"(.+)"', res)
-    #ids = re.search(r'id : "(\d+)",\ncourse', res).group(1)
+
+    ids = re.findall(r'id : "(\d+)",\ncourse', res)
     #print(ids)
 
     dir_name = course_dir(*names[:2])
 
     print(dir_name)
     CONFIG['term_id'] = term_id
-    return term_id, dir_name
+    return term_id, dir_name, ids
 
 
 def parse_resource(resource):
@@ -192,31 +193,32 @@ def get_resource(term_id):
         WORK_DIR.change('Texts')
         parse_res_list(rich_text_list, None, parse_resource)
 
-def get_discussion(term_id, save_path):
+def get_discussion(ids, save_path):
     """获取讨论区内容"""
     questions = []
     question = []
-    start = 1
-    while len(question) or start==1:
-        post_data = {'callCount': '1', 
-                'scriptSessionId': '${scriptSessionId}190',
-                'c0-scriptName': 'PostBean',
-                'c0-methodName': 'getAllPostsPagination',
-                'c0-id': '0',
-                'c0-param0': 'number:' + term_id,
-                'c0-param1': 'string:',
-                'c0-param2': 'number:1',
-                'c0-param3': 'string:' + str(start),
-                'c0-param4': 'number:20',
-                'c0-param5': 'boolean:false',
-                'c0-param6': 'null:null',
-                'batchId': str(int(time.time()) * 1000)}
-        res = CANDY.post('https://www.icourse163.org/dwr/call/plaincall/PostBean.getAllPostsPagination.dwr',
-                    data=post_data).text.encode('utf_8').decode('unicode_escape')
+    for term_id in ids:
+        start = 1
+        while len(question) or start==1:
+            post_data = {'callCount': '1', 
+                    'scriptSessionId': '${scriptSessionId}190',
+                    'c0-scriptName': 'PostBean',
+                    'c0-methodName': 'getAllPostsPagination',
+                    'c0-id': '0',
+                    'c0-param0': 'number:' + term_id,
+                    'c0-param1': 'string:',
+                    'c0-param2': 'number:1',
+                    'c0-param3': 'string:' + str(start),
+                    'c0-param4': 'number:20',
+                    'c0-param5': 'boolean:false',
+                    'c0-param6': 'null:null',
+                    'batchId': str(int(time.time()) * 1000)}
+            res = CANDY.post('https://www.icourse163.org/dwr/call/plaincall/PostBean.getAllPostsPagination.dwr',
+                        data=post_data).text.encode('utf_8').decode('unicode_escape')
 
-        question =  re.findall(r'id=(\d+).+title="([\s\S]+?)"?;', res)
-        questions += question
-        start+=1
+            question =  re.findall(r'id=(\d+).+title="([\s\S]+?)"?;', res)
+            questions += question
+            start+=1
 
     content_data = {'callCount': '1', 
              'scriptSessionId': '${scriptSessionId}190',
@@ -284,7 +286,7 @@ def start(url, config, cookies):
     #输出配置
     print(CONFIG)
 
-    term_id, dir_name = get_summary(url)
+    term_id, dir_name, ids = get_summary(url)
     print("term id: " + str(term_id))
     WORK_DIR = WorkingDir(CONFIG['dir'], dir_name)
     FILES['discussion'] = WORK_DIR.file('discussion.json')
@@ -297,7 +299,7 @@ def start(url, config, cookies):
     if CONFIG['discussion']:
         # 拉取讨论区
         print("====>开始拉取讨论区")
-        get_discussion(term_id, FILES['discussion'])
+        get_discussion(ids, FILES['discussion'])
 
 
     if CONFIG['aria2']:
