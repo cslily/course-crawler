@@ -2,7 +2,7 @@
 """网易云课堂 MOOC"""
 
 import time
-from .utils import *
+from moocs.utils import *
 
 CANDY = Crawler()
 CONFIG = {}
@@ -35,16 +35,20 @@ def get_announce(term_id):
                  'c0-param1': 'number:1', 'batchId': str(int(time.time() * 1000))}
     res = CANDY.post('https://mooc.study.163.com/dwr/call/plaincall/CourseBean.getAllAnnouncementByTerm.dwr',
                      data=post_data).text
-    announcements = re.findall(r'content="(.*?[^\\])".*title="(.*?[^\\])"', res)
+    announcements = re.findall(
+        r'content="(.*?[^\\])".*title="(.*?[^\\])"', res)
 
     with open('Announcements.html', 'w', encoding='utf-8') as announce_file:
         for announcement in announcements:
             # 公告内容
-            announce_content = announcement[0].encode('utf-8').decode('unicode_escape')
+            announce_content = announcement[0].encode(
+                'utf-8').decode('unicode_escape')
 
             # 公告标题
-            announce_title = announcement[1].encode('utf-8').decode('unicode_escape')
-            announce_file.write('<h1>' + announce_title + '</h1>\n' + announce_content + '\n')
+            announce_title = announcement[1].encode(
+                'utf-8').decode('unicode_escape')
+            announce_file.write('<h1>' + announce_title +
+                                '</h1>\n' + announce_content + '\n')
 
 
 def parse_resource(resource):
@@ -80,7 +84,8 @@ def parse_resource(resource):
                 continue
             break
         res_print(file_name + ext)
-        FILES['renamer'].write(re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
+        FILES['renamer'].write(
+            re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
         FILES['video'].write_string(url)
         resource.ext = ext
 
@@ -92,7 +97,8 @@ def parse_resource(resource):
             if len(subtitles) == 1:
                 sub_name = file_name + '.srt'
             else:
-                subtitle_lang = subtitle[0].encode('utf_8').decode('unicode_escape')
+                subtitle_lang = subtitle[0].encode(
+                    'utf_8').decode('unicode_escape')
                 sub_name = file_name + '_' + subtitle_lang + '.srt'
             res_print(sub_name)
             CANDY.download_bin(subtitle[1], WORK_DIR.file(sub_name))
@@ -107,7 +113,8 @@ def parse_resource(resource):
     elif resource.type == 'Rich':
         if WORK_DIR.exist(file_name + '.html'):
             return
-        text = re.search(r'htmlContent:"(.*)",id', res.encode('utf_8').decode('unicode_escape'), re.S).group(1)
+        text = re.search(r'htmlContent:"(.*)",id',
+                         res.encode('utf_8').decode('unicode_escape'), re.S).group(1)
         res_print(file_name + '.html')
         with open(WORK_DIR.file(file_name + '.html'), 'w', encoding='utf_8') as file:
             file.write(text)
@@ -135,7 +142,8 @@ def get_resource(term_id):
         counter.add(0)
         outline.write(chapter[1], counter, 0)
 
-        lessons = re.findall(r'chapterId=' + chapter[0] + r'.+contentType=1.+id=(\d+).+name="(.+)".+test', res)
+        lessons = re.findall(
+            r'chapterId=' + chapter[0] + r'.+contentType=1.+id=(\d+).+name="(.+)".+test', res)
         for lesson in lessons:
             counter.add(1)
             outline.write(lesson[1], counter, 1)
@@ -223,4 +231,5 @@ def start(url, config, cookies=None):
         for file in list(FILES.keys()):
             del FILES[file]
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])

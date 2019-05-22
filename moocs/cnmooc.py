@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """好大学在线"""
 
-from .utils import *
+from moocs.utils import *
 from bs4 import BeautifulSoup
 
 CANDY = Crawler()
@@ -35,7 +35,8 @@ def get_resource(course_nav):
     nav = soup.find(id='unitNavigation')
     chapters = nav.find_all(class_='view-chapter')
     for chapter in chapters:
-        chapter_name = chapter.find(class_='chapter-text substr').get_text(strip=True)
+        chapter_name = chapter.find(
+            class_='chapter-text substr').get_text(strip=True)
         counter.add(0)
         outline.write(chapter_name, counter, 0)
 
@@ -50,9 +51,11 @@ def get_resource(course_nav):
             group = actions.div.find_all('a')
             # for action in group:
             #     print(action.i['class'])
-            videos = list(filter(lambda action: 'icon-play' in action.i['class'][0], group))
+            videos = list(
+                filter(lambda action: 'icon-play' in action.i['class'][0], group))
             # videos = [action for action in group if lambda :'icon-play' in action.i['class'][0]]
-            docs = list(filter(lambda action: 'icon-doc' in action.i['class'][0], group))
+            docs = list(
+                filter(lambda action: 'icon-doc' in action.i['class'][0], group))
             for video in videos:
                 counter.add(2)
                 outline.write(video['title'], counter, 2, sign='#')
@@ -60,12 +63,14 @@ def get_resource(course_nav):
                     extra_num = ''
                 else:
                     extra_num = '-%s' % str(counter)[-1:]
-                video_list.append(Video(counter, lecture_name + extra_num, video['itemid']))
+                video_list.append(
+                    Video(counter, lecture_name + extra_num, video['itemid']))
             counter.reset()
             for doc in docs:
                 counter.add(2)
                 outline.write(doc['title'], counter, 2, sign='*')
-                document_list.append(Document(counter, lecture_name, doc['itemid']))
+                document_list.append(
+                    Document(counter, lecture_name, doc['itemid']))
     return video_list, document_list
 
 
@@ -78,15 +83,18 @@ def parse_resource(video):
     soup = BeautifulSoup(res, 'lxml')
     node_id = soup.find(id='nodeId')['value']
 
-    res = CANDY.post('https://www.cnmooc.org/item/detail.mooc', data={'nodeId': node_id, 'itemId': video.meta}).json()
+    res = CANDY.post('https://www.cnmooc.org/item/detail.mooc',
+                     data={'nodeId': node_id, 'itemId': video.meta}).json()
     url = res['node']['flvUrl']
     FILES['videos'].write_string(url)
     FILES['renamer'].write(url.split('/')[-1], video.file_name)
     if CONFIG['sub']:
         exts = res['node']['nodeExts']
         for ext in exts:
-            file_name = '%s%s.srt' % (video.file_name, '' if len(exts) == 1 else '_' + ext['languageCode'])
-            CANDY.download_bin('https://static.cnmooc.org' + ext['node']['rsUrl'], WORK_DIR.file(file_name))
+            file_name = '%s%s.srt' % (video.file_name, '' if len(
+                exts) == 1 else '_' + ext['languageCode'])
+            CANDY.download_bin('https://static.cnmooc.org' +
+                               ext['node']['rsUrl'], WORK_DIR.file(file_name))
 
 
 def get_doc(doc_list):
@@ -95,7 +103,8 @@ def get_doc(doc_list):
     WORK_DIR.change('Docs')
     for doc in doc_list:
         post_data = {'itemId': doc.meta, 'itemType': '20', 'testPaperId': ''}
-        res = CANDY.post('https://www.cnmooc.org/study/play.mooc', data=post_data).text
+        res = CANDY.post(
+            'https://www.cnmooc.org/study/play.mooc', data=post_data).text
         try:
             url = re.search(r'isSlideShow\("(.+)?"\);', res).group(1)
         except AttributeError:
@@ -132,7 +141,8 @@ def start(url, config, cookies=None):
     rename = WORK_DIR.file('Names.txt') if CONFIG['rename'] else False
 
     if CONFIG['dpl']:
-        parse_res_list(resource[0], rename, FILES['playlist'].write, parse_resource)
+        parse_res_list(resource[0], rename,
+                       FILES['playlist'].write, parse_resource)
     else:
         parse_res_list(resource[0], rename, parse_resource)
 
@@ -143,4 +153,5 @@ def start(url, config, cookies=None):
         for file in list(FILES.keys()):
             del FILES[file]
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])

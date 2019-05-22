@@ -3,7 +3,7 @@
 
 import time
 import json
-from .utils import *
+from moocs.utils import *
 
 CANDY = Crawler()
 CONFIG = {}

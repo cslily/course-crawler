@@ -2,12 +2,13 @@
 """网易云课堂"""
 
 import time
-from .utils import *
+from moocs.utils import *
 from urllib import parse
 
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
+
 
 def get_summary(url):
     """从课程主页面获取信息"""
@@ -27,19 +28,21 @@ def get_summary(url):
     CONFIG['course_id'] = course_id
     return course_id, dir_name
 
+
 def parse_resource(resource):
     """解析资源地址和下载资源"""
 
     file_name = resource.file_name
     if resource.type == 'Video':
-        post_data = {'callCount': '1', 'scriptSessionId':'${scriptSessionId}190',
-                     'httpSessionId':'b1a6d411df364e51833ac11570fc3f07', 'c0-scriptName':'LessonLearnBean',
-                     'c0-methodName':'getVideoLearnInfo', 'c0-id':'0', 'c0-param0':'string:' + resource.meta[1],
-                     'c0-param1':'string:' + CONFIG['course_id'],
+        post_data = {'callCount': '1', 'scriptSessionId': '${scriptSessionId}190',
+                     'httpSessionId': 'b1a6d411df364e51833ac11570fc3f07', 'c0-scriptName': 'LessonLearnBean',
+                     'c0-methodName': 'getVideoLearnInfo', 'c0-id': '0', 'c0-param0': 'string:' + resource.meta[1],
+                     'c0-param1': 'string:' + CONFIG['course_id'],
                      'batchId': str(int(time.time() * 1000))}
         res = CANDY.post('https://study.163.com/dwr/call/plaincall/LessonLearnBean.getVideoLearnInfo.dwr',
                          data=post_data).text.encode('utf_8').decode('unicode_escape')
-        video_info = re.search(r'signature="(\w+)";.+videoId=(\d+);[\s\S]+name:"(.+?)",', res).group(1,2,3)
+        video_info = re.search(
+            r'signature="(\w+)";.+videoId=(\d+);[\s\S]+name:"(.+?)",', res).group(1, 2, 3)
         data = CANDY.post('https://vod.study.163.com/eds/api/v1/vod/video', data={
             'videoId': video_info[1],
             'signature': video_info[0],
@@ -58,7 +61,8 @@ def parse_resource(resource):
                 continue
             break
         res_print(file_name + ext)
-        FILES['renamer'].write(re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
+        FILES['renamer'].write(
+            re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
         FILES['video'].write_string(url)
         resource.ext = ext
 
@@ -70,16 +74,16 @@ def parse_resource(resource):
         if WORK_DIR.exist(file_name + '.pdf'):
             return
         post_data = {
-            'callCount':'1',
-            'scriptSessionId':'${scriptSessionId}190',
-            'httpSessionId':'c4927103a1c042ee95faed758d0db8f8',
-            'c0-scriptName':'LessonLearnBean',
-            'c0-methodName':'getTextLearnInfo',
-            'c0-id':'0',
-            'c0-param0':'string:' + resource.meta[1],
-            'c0-param1':'string:' + CONFIG['course_id'],
-            'batchId':str(int(time.time() * 1000)),
-            }
+            'callCount': '1',
+            'scriptSessionId': '${scriptSessionId}190',
+            'httpSessionId': 'c4927103a1c042ee95faed758d0db8f8',
+            'c0-scriptName': 'LessonLearnBean',
+            'c0-methodName': 'getTextLearnInfo',
+            'c0-id': '0',
+            'c0-param0': 'string:' + resource.meta[1],
+            'c0-param1': 'string:' + CONFIG['course_id'],
+            'batchId': str(int(time.time() * 1000)),
+        }
         res = CANDY.post('https://study.163.com/dwr/call/plaincall/LessonLearnBean.getTextLearnInfo.dwr',
                          data=post_data).text.encode('utf_8').decode('unicode_escape')
         pdf_url = re.search(r'pdfUrl:"(http://.+?)",', res).group(1)
@@ -89,7 +93,9 @@ def parse_resource(resource):
         if WORK_DIR.exist(file_name + resource.meta[2]):
             return
         res_print(file_name + resource.meta[2])
-        CANDY.download_bin(resource.meta[3], WORK_DIR.file(file_name + resource.meta[2]))
+        CANDY.download_bin(resource.meta[3], WORK_DIR.file(
+            file_name + resource.meta[2]))
+
 
 def get_resource(course_id):
     """获取各种资源"""
@@ -102,17 +108,17 @@ def get_resource(course_id):
     file_list = []
 
     post_data = {
-                'callCount':'1',
-                'scriptSessionId':'${scriptSessionId}190',
-                'httpSessionId':'89a04ce41c7d42759b0a62efe392e153',
-                'c0-scriptName':'PlanNewBean',
-                'c0-methodName':'getPlanCourseDetail',
-                'c0-id': '0',
-                'c0-param0':'string:' + course_id,
-                'c0-param1':'number:0',
-                'c0-param2':'null:null',
-                'batchId':str(int(time.time() * 1000)),
-                }
+        'callCount': '1',
+        'scriptSessionId': '${scriptSessionId}190',
+        'httpSessionId': '89a04ce41c7d42759b0a62efe392e153',
+        'c0-scriptName': 'PlanNewBean',
+        'c0-methodName': 'getPlanCourseDetail',
+        'c0-id': '0',
+        'c0-param0': 'string:' + course_id,
+        'c0-param1': 'number:0',
+        'c0-param2': 'null:null',
+        'batchId': str(int(time.time() * 1000)),
+    }
     res = CANDY.post('https://study.163.com/dwr/call/plaincall/PlanNewBean.getPlanCourseDetail.dwr',
                      data=post_data).text.encode('utf_8').decode('unicode_escape')
 
@@ -121,7 +127,8 @@ def get_resource(course_id):
         counter.add(0)
         outline.write(chapter[1], counter, 0)
 
-        lessons = re.findall(r'chapterId=%s;.+?hasReferences=(\w+);.+?id=(\d+).+?lessonName="(.*?)";.+?type=(\d+);' % chapter[0], res, re.DOTALL)
+        lessons = re.findall(
+            r'chapterId=%s;.+?hasReferences=(\w+);.+?id=(\d+).+?lessonName="(.*?)";.+?type=(\d+);' % chapter[0], res, re.DOTALL)
         for lesson in lessons:
             counter.add(1)
             outline.write(lesson[2], counter, 1)
@@ -142,13 +149,14 @@ def get_resource(course_id):
             # References
             files = []
             if eval(lesson[0][0].upper() + lesson[0][1:]):
-                post_data = {'callCount': '1', 'scriptSessionId':'${scriptSessionId}190',
-                             'httpSessionId':'b1a6d411df364e51833ac11570fc3f07', 'c0-scriptName':'LessonReferenceBean',
-                             'c0-methodName':'getLessonReferenceVoByLessonId', 'c0-id':'0', 'c0-param0':'number:' + lesson[1],
+                post_data = {'callCount': '1', 'scriptSessionId': '${scriptSessionId}190',
+                             'httpSessionId': 'b1a6d411df364e51833ac11570fc3f07', 'c0-scriptName': 'LessonReferenceBean',
+                             'c0-methodName': 'getLessonReferenceVoByLessonId', 'c0-id': '0', 'c0-param0': 'number:' + lesson[1],
                              'batchId': str(int(time.time() * 1000))}
                 ref_info = CANDY.post('https://study.163.com/dwr/call/plaincall/LessonReferenceBean.getLessonReferenceVoByLessonId.dwr',
-                                 data=post_data).text.encode('utf_8').decode('unicode_escape')
-                refs = re.findall(r'id=(\d+);.+name="(.+)";.+suffix="(\.\w+)";.+url="(.+?)";', ref_info)
+                                      data=post_data).text.encode('utf_8').decode('unicode_escape')
+                refs = re.findall(
+                    r'id=(\d+);.+name="(.+)";.+suffix="(\.\w+)";.+url="(.+?)";', ref_info)
 
                 for ref in refs:
                     ref = (ref[0], parse.unquote(ref[1]), ref[2], ref[3])
@@ -176,6 +184,7 @@ def get_resource(course_id):
         WORK_DIR.change('Files')
         parse_res_list(file_list, None, parse_resource)
 
+
 def start(url, config, cookies=None):
     """调用接口函数"""
 
@@ -200,4 +209,5 @@ def start(url, config, cookies=None):
         for file in list(FILES.keys()):
             del FILES[file]
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])

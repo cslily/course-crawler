@@ -2,24 +2,28 @@
 """爱课程 资源共享课"""
 import re
 
-from .utils import *
+from moocs.utils import *
 from bs4 import BeautifulSoup
 
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
 
+
 def get_summary(url):
     """从课程主页面获取信息"""
     if re.match(r'https?://www.icourses.cn/web/sword/portal/shareDetails\?cId=(\d+)', url):
-        course_id = re.match(r'https?://www.icourses.cn/web/sword/portal/shareDetails\?cId=(\d+)', url).group(1)
+        course_id = re.match(
+            r'https?://www.icourses.cn/web/sword/portal/shareDetails\?cId=(\d+)', url).group(1)
         url = 'http://www.icourses.cn/sCourse/course_{}.html'.format(course_id)
     else:
-        course_id = re.match(r'https?://www.icourses.cn/sCourse/course_(\d+).html', url).group(1)
+        course_id = re.match(
+            r'https?://www.icourses.cn/sCourse/course_(\d+).html', url).group(1)
     res = CANDY.get(url)
     res.encoding = 'utf8'
     soup = BeautifulSoup(res.text, 'lxml')
-    name = soup.find('div', class_='course-introduction-infor').find('div', class_='course-title').p.string
+    name = soup.find('div', class_='course-introduction-infor').find('div',
+                                                                     class_='course-title').p.string
 
     dir_name = course_dir(name, '爱课程资源共享课')
 
@@ -45,7 +49,8 @@ def parse_resource(resource):
                 break
 
         res_print(file_name + '.mp4')
-        FILES['renamer'].write(re.search(r'(\w+\.mp4)', url).group(1), file_name)
+        FILES['renamer'].write(
+            re.search(r'(\w+\.mp4)', url).group(1), file_name)
         FILES['video'].write_string(url)
         #resource.ext = ext
 
@@ -70,30 +75,40 @@ def get_resource(course_id):
     video_list = []
     pdf_list = []
 
-    res = CANDY.get('http://www.icourses.cn/web/sword/portal/shareChapter?cid={}'.format(course_id))
+    res = CANDY.get(
+        'http://www.icourses.cn/web/sword/portal/shareChapter?cid={}'.format(course_id))
     soup = BeautifulSoup(res.text, 'lxml')
-    chapters = soup.find('ul', id = 'chapters').children
+    chapters = soup.find('ul', id='chapters').children
     for chapter in chapters:
         if chapter.name is None:
             continue
         counter.add(0)
         chapter_id = chapter.attrs['data-id']
-        chapter_name = chapter.find('a', class_ = 'chapter-title-text').string.replace('\n\t\t\t\t\t\t\t', ' ')
+        chapter_name = chapter.find(
+            'a', class_='chapter-title-text').string.replace('\n\t\t\t\t\t\t\t', ' ')
         outline.write(chapter_name, counter, 0)
 
         # 章前导读
         try:
-            important = chapter.find('a', attrs = {'title': '重点难点'}).attrs['data-url']
-            instructional_design = chapter.find('a', attrs = {'title': '教学设计'}).attrs['data-url']
-            exam_id = chapter.find('a', attrs = {'title': '评价考核'}).attrs['data-id']
-            exam_contents = requests.post('http://www.icourses.cn/web//sword/common/getTextBody', data = {'id': exam_id}).text
-            textbook_id = chapter.find('a', attrs = {'title': '教材内容'}).attrs['data-id']
-            textbook_contents = requests.post('http://www.icourses.cn/web//sword/common/getTextBody', data = {'id': textbook_id}).text
+            important = chapter.find(
+                'a', attrs={'title': '重点难点'}).attrs['data-url']
+            instructional_design = chapter.find(
+                'a', attrs={'title': '教学设计'}).attrs['data-url']
+            exam_id = chapter.find(
+                'a', attrs={'title': '评价考核'}).attrs['data-id']
+            exam_contents = requests.post(
+                'http://www.icourses.cn/web//sword/common/getTextBody', data={'id': exam_id}).text
+            textbook_id = chapter.find(
+                'a', attrs={'title': '教材内容'}).attrs['data-id']
+            textbook_contents = requests.post(
+                'http://www.icourses.cn/web//sword/common/getTextBody', data={'id': textbook_id}).text
             WORK_DIR.change('Introduction')
             outline.write('重点难点', counter, 2, sign='*')
-            CANDY.download_bin(important, WORK_DIR.file('%s 重点难点.html') % counter)
+            CANDY.download_bin(important, WORK_DIR.file(
+                '%s 重点难点.html') % counter)
             outline.write('教学设计', counter, 2, sign='*')
-            CANDY.download_bin(instructional_design, WORK_DIR.file('%s 教学设计.html') % counter)
+            CANDY.download_bin(instructional_design,
+                               WORK_DIR.file('%s 教学设计.html') % counter)
             outline.write('评价考核', counter, 2, sign='+')
             with open(WORK_DIR.file('%s 评价考核.html' % counter), 'w', encoding='utf_8') as file:
                 file.write(exam_contents)
@@ -113,10 +128,12 @@ def get_resource(course_id):
                 if lesson.name is None:
                     continue
                 counter.add(1)
-                lesson_info = lesson.find('a', class_='chapter-body-content-text')
+                lesson_info = lesson.find(
+                    'a', class_='chapter-body-content-text')
                 lesson_id = lesson_info.attrs['data-secid']
                 lesson_name = lesson_info.text.replace('\n', '')
-            rej = requests.post('http://www.icourses.cn/web//sword/portal/getRess', data = {'sectionId': lesson_id}).json()
+            rej = requests.post(
+                'http://www.icourses.cn/web//sword/portal/getRess', data={'sectionId': lesson_id}).json()
 
             outline.write(lesson_name, counter, 1)
 
@@ -124,7 +141,8 @@ def get_resource(course_id):
                 if resource['mediaType'] == 'mp4':
                     counter.add(2)
                     outline.write(resource['title'], counter, 2, sign='#')
-                    video_list.append(Video(counter, resource['title'], resource))
+                    video_list.append(
+                        Video(counter, resource['title'], resource))
             counter.reset()
 
             for resource in rej['model']['listRes']:
@@ -132,7 +150,8 @@ def get_resource(course_id):
                     counter.add(2)
                     outline.write(resource['title'], counter, 2, sign='*')
                     if CONFIG['doc']:
-                        pdf_list.append(Document(counter, resource['title'], resource))
+                        pdf_list.append(
+                            Document(counter, resource['title'], resource))
             counter.reset()
 
     if video_list:
@@ -172,4 +191,5 @@ def start(url, config, cookies=None):
         for file in list(FILES.keys()):
             del FILES[file]
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])

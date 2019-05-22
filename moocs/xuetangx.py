@@ -3,7 +3,7 @@
 
 import json
 from bs4 import BeautifulSoup
-from .utils import *
+from moocs.utils import *
 
 BASE_URL = 'http://www.xuetangx.com'
 CANDY = Crawler()
@@ -23,7 +23,8 @@ def get_book(url):
         for book_count, book in enumerate(soup.select('#booknav a'), 1):
             res_print(book.string)
             file_name = Resource.file_to_save(book.string) + '.pdf'
-            CANDY.download_bin(BASE_URL + book['rel'][0], WORK_DIR.file(file_name))
+            CANDY.download_bin(
+                BASE_URL + book['rel'][0], WORK_DIR.file(file_name))
 
 
 def get_handout(url):
@@ -52,7 +53,8 @@ def get_video(video):
     except:
         video_url = json.loads(res)['sources']['quality10'][0]
     FILES['videos'].write_string(video_url)
-    FILES['renamer'].write(re.search(r'(\w+-[12]0.mp4)', video_url).group(1), file_name)
+    FILES['renamer'].write(
+        re.search(r'(\w+-[12]0.mp4)', video_url).group(1), file_name)
 
 
 def get_content(url):
@@ -117,7 +119,8 @@ def get_content(url):
                         # 替换连续空格或制表符为单个空格
                         video_name = block.h2.string.strip()
 
-                        outline.write(video_name, video_counter, level=3, sign='#')
+                        outline.write(video_name, video_counter,
+                                      level=3, sign='#')
 
                         if video_name == 'Video' or video_name == '视频' or video_name == '':
                             video_name = tab_title
@@ -156,10 +159,12 @@ def get_subtitles(available, transcript, file_name):
         subtitle_url = base_subtitle_url + subtitle_desc
         CANDY.get(subtitle_url)
         if multi_subtitle:
-            sub_file_name = file_name + '_' + subtitle_desc.replace('_xuetangx', '') + '.srt'
+            sub_file_name = file_name + '_' + \
+                subtitle_desc.replace('_xuetangx', '') + '.srt'
         else:
             sub_file_name = file_name + '.srt'
-        subtitle = CANDY.get(subtitle_available_url.rstrip('available_translations') + 'download').content
+        subtitle = CANDY.get(subtitle_available_url.rstrip(
+            'available_translations') + 'download').content
         with open(WORK_DIR.file(sub_file_name), 'wb') as subtitle_file:
             subtitle_file.write(subtitle)
 
@@ -213,4 +218,5 @@ def start(url, config, cookies=None):
         for file in list(FILES.keys()):
             del FILES[file]
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])

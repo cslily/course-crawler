@@ -72,36 +72,36 @@ def main():
               'aria2': args.aria2, 'aria2-webui': args.aria2_webui, 'aria2-session': args.aria2_session}
 
     if re.match(r'https?://www.icourse163.org/(spoc/)?(course|learn)/', args.url):
-        from mooc import icourse163
+        from moocs import icourse163
         cookies = store_cookies('icourse163.json')
         icourse163.start(args.url, config, cookies)
     elif re.match(r'https?://www.xuetangx.com/courses/.+/about', args.url):
-        from mooc import xuetangx
+        from moocs import xuetangx
         cookies = store_cookies('xuetangx.json')
         xuetangx.start(args.url, config, cookies)
     elif re.match(r'https?://mooc.study.163.com/(course|learn)/', args.url):
-        from mooc import study_mooc
+        from moocs import study_mooc
         cookies = store_cookies('study_163_mooc.json')
         study_mooc.start(args.url, config, cookies)
     elif re.match(r'https?://study.163.com/course/', args.url):
-        from mooc import study_163
+        from moocs import study_163
         study_163.start(args.url, config)
     elif re.match(r'https?://open.163.com/(special|movie)/', args.url):
-        from mooc import open_163
+        from moocs import open_163
         open_163.start(args.url, config)
     elif re.match(r'https?://www.cnmooc.org/portal/course/', args.url):
-        from mooc import cnmooc
+        from moocs import cnmooc
         cookies = store_cookies('cnmooc.json')
         cnmooc.start(args.url, config, cookies)
     elif re.match(r'https?://www.icourses.cn/web/sword/portal/videoDetail', args.url):
-        from mooc import icourses
+        from moocs import icourses
         icourses.start(args.url, config)
     elif re.match(r'https?://www.icourses.cn/sCourse/course_\d+.html', args.url) or \
             re.match(r'https?://www.icourses.cn/web/sword/portal/shareDetails\?cId=', args.url):
-        from mooc import icourses_share
+        from moocs import icourses_share
         icourses_share.start(args.url, config)
     elif re.match(r'https?://www.livedu.com.cn/ispace4.0/moocxjkc/toKcView.do\?kcid=', args.url):
-        from mooc import livedu
+        from moocs import livedu
         cookies = store_cookies('livedu.json')
         livedu.start(args.url, config, cookies)
     else:

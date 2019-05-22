@@ -3,7 +3,7 @@
 
 import time
 
-from .utils import *
+from moocs.utils import *
 from bs4 import BeautifulSoup
 from Crypto.Cipher import AES
 
@@ -16,7 +16,7 @@ def get_summary(url):
     """从课程主页面获取信息"""
 
     res = CANDY.get(url).text
-    soup = BeautifulSoup(res,'html.parser')
+    soup = BeautifulSoup(res, 'html.parser')
     links = []
     if re.match(r'https?://open.163.com/special/', url):
         # 从课程主页解析各课程链接
@@ -36,7 +36,7 @@ def get_summary(url):
         organization = names[0].string.strip()
         course = names[1].string.strip()
         listrow = soup.find('div', class_='listrow')
-        for item in listrow.find_all('div',class_='item'):
+        for item in listrow.find_all('div', class_='item'):
             p = item.find('p', class_='f-thide')
             if p.find('a'):
                 a = p.find('a')
@@ -51,6 +51,7 @@ def get_summary(url):
     CONFIG['links'] = links
     return links, dir_name
 
+
 def parse_resource(resource):
     """解析资源地址和下载资源"""
 
@@ -58,7 +59,7 @@ def parse_resource(resource):
         """将加密16进制字符串转化为真实url"""
         CRYKey = {1: b"4fxGZqoGmesXqg2o", 2: b"3fxVNqoPmesAqg2o"}
         aes = AES.new(CRYKey[t], AES.MODE_ECB)
-        return str(aes.decrypt(bytes.fromhex(hex_string)),encoding='gbk',errors="ignore").replace('\x08','').replace('\x06', '')
+        return str(aes.decrypt(bytes.fromhex(hex_string)), encoding='gbk', errors="ignore").replace('\x08', '').replace('\x06', '')
 
     def update_hex_urls(node, hex_urls):
         """从node中解析出来url信息，并更新hex_url"""
@@ -72,12 +73,13 @@ def parse_resource(resource):
     link = resource.meta
     file_name = resource.file_name
     video_info = link.replace('.html', '').split('/')[-1]
-    xml_url = 'http://live.ws.126.net/movie/' + video_info[-2] + '/' + video_info[-1] + '/2_' + video_info + '.xml'
+    xml_url = 'http://live.ws.126.net/movie/' + \
+        video_info[-2] + '/' + video_info[-1] + '/2_' + video_info + '.xml'
     res = CANDY.get(xml_url)
     res.encoding = 'gbk'
 
     # 解析xml数据
-    soup = BeautifulSoup(res.text,'lxml')
+    soup = BeautifulSoup(res.text, 'lxml')
     name = soup.find('title').string
     encrypt = int(soup.find('encrypt').string)
     hex_urls = {}
@@ -91,21 +93,23 @@ def parse_resource(resource):
 
     formats = ['mp4', 'flv']
     resolutions = ['shd', 'hd', 'sd']
-    resolutions = resolutions[CONFIG['resolution']:] + list(reversed(resolutions[:CONFIG['resolution']]))
+    resolutions = resolutions[CONFIG['resolution']:] + \
+        list(reversed(resolutions[:CONFIG['resolution']]))
     modes = ((sp, ext) for sp in resolutions for ext in formats)
     for sp, ext in modes:
         if hex_urls.get(sp):
             if hex_urls[sp].get(ext):
                 hex_url = hex_urls[sp][ext]
                 video_url = open_decrypt(hex_url, encrypt)
-                ext = video_url.split('.')[-1] # 对扩展名进行修正，有的课程从mp4中解析出来的仍为flv
+                ext = video_url.split('.')[-1]  # 对扩展名进行修正，有的课程从mp4中解析出来的仍为flv
                 if ext in formats:
                     ext = '.' + ext
                     resource.ext = ext
                     break
 
     res_print(file_name + ext)
-    FILES['renamer'].write(re.search(r'(\w+\%s)'% ext, video_url).group(1), file_name, ext)
+    FILES['renamer'].write(re.search(r'(\w+\%s)' %
+                                     ext, video_url).group(1), file_name, ext)
     FILES['video'].write_string(video_url)
     if not CONFIG['sub']:
         return
@@ -117,6 +121,7 @@ def parse_resource(resource):
             sub_name = file_name + '_' + subtitle_lang + '.srt'
         res_print(sub_name)
         CANDY.download_bin(subtitle_url, WORK_DIR.file(sub_name))
+
 
 def get_resource(links):
     """获取各种资源"""
@@ -139,6 +144,7 @@ def get_resource(links):
             parse_res_list(video_list, rename, parse_resource, playlist.write)
         else:
             parse_res_list(video_list, rename, parse_resource)
+
 
 def start(url, config, cookies=None):
     """调用接口函数"""
@@ -164,4 +170,5 @@ def start(url, config, cookies=None):
         for file in list(FILES.keys()):
             del FILES[file]
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])

@@ -36,7 +36,8 @@ class Resource(object):
     def __init__(self, identify, name, meta, feature=None):
         """将 name 的序号消除，并依次为属性赋值"""
         self.id = str(identify)
-        self.name = Resource.regex_spaces.sub(' ', Resource.regex_sort.sub('', name)).strip()
+        self.name = Resource.regex_spaces.sub(
+            ' ', Resource.regex_sort.sub('', name)).strip()
         self.meta = meta
         self.feature = feature
 
@@ -107,7 +108,7 @@ class Attachment(Resource):
 
 class ClassicFile(object):
     """典型文件（UTF-8 编码的文件）类
-    
+
     属性
         _f：文件指针；
         file：文件名或文件路径。
@@ -150,8 +151,10 @@ class Playlist(ClassicFile):
         """传入一个 Video 类的对象，将该对象的信息写入播放列表"""
 
         self._count += 1
-        self.write_string('%d*file*Videos\\%s%s' % (self._count, video.file_name, video.ext))
-        self.write_string('%d*title*%s %s\n' % (self._count, '.'.join(video.id.split('.')[:-1]), video.name))
+        self.write_string('%d*file*Videos\\%s%s' %
+                          (self._count, video.file_name, video.ext))
+        self.write_string('%d*title*%s %s\n' % (self._count,
+                                                '.'.join(video.id.split('.')[:-1]), video.name))
 
 
 class Renamer(ClassicFile):
@@ -171,7 +174,8 @@ class Renamer(ClassicFile):
         """传入一个文件的原始名字（URL 中的文件名）和一个新的文件名"""
 
         if SYS == 'Windows':
-            self.write_string('REN "%s" "%s%s"' % (origin_name, file_name, ext))
+            self.write_string('REN "%s" "%s%s"' %
+                              (origin_name, file_name, ext))
         else:
             self.write_string('mv "%s" "%s%s"' % (origin_name, file_name, ext))
 
@@ -183,7 +187,8 @@ class Outline(ClassicFile):
         res_type：通过一个符号代表一种文件类型。
     """
 
-    res_type = {'#': '【视频】', '!': '【附件】', '*': '【文档】', '+': '【富文本】', '&': '【字幕】', '': ''}
+    res_type = {'#': '【视频】', '!': '【附件】', '*': '【文档】',
+                '+': '【富文本】', '&': '【字幕】', '': ''}
 
     def __init__(self):
         """创建 Outline.txt 文件"""
@@ -258,7 +263,7 @@ class WorkingDir(object):
 
     def change(self, *relative):
         """切换工作目录（假），可以接受连续多个目录名，如果不存在该目录就创建它
-        
+
         切换的功能需要配合 file() 才能实现。
         """
 
@@ -279,12 +284,12 @@ class WorkingDir(object):
 
 class Counter(object):
     """计数器类
-    
+
     属性
         counter：计数器的列表。
     """
 
-    def __init__(self, level_num = 3):
+    def __init__(self, level_num=3):
         """初始化一个列表"""
 
         self.counter = [0] * level_num
@@ -335,9 +340,11 @@ def parse_res_list(res_list, file, *operator):
         if SYS == 'Windows':
             os.startfile(file)
         elif SYS == 'Linux':
-            subprocess.run('gedit "%s"' % file, shell=True, stdout=subprocess.PIPE)
+            subprocess.run('gedit "%s"' %
+                           file, shell=True, stdout=subprocess.PIPE)
         elif SYS == 'Darwin':
-            subprocess.run('open -t "%s"' % file, shell=True, stdout=subprocess.PIPE)
+            subprocess.run('open -t "%s"' %
+                           file, shell=True, stdout=subprocess.PIPE)
         input('修改完文件名后按回车继续。')
         with open(file, encoding='utf_8') as f:
             for res in res_list:
@@ -346,6 +353,7 @@ def parse_res_list(res_list, file, *operator):
     else:
         for res in res_list:
             res.operation(*operator)
+
 
 def aria2_download(aria2_path, workdir, webui=None, session=None):
     """传入 aria2 和其 webui 、 session 的路径信息，调用 aria2 下载视频"""
@@ -356,7 +364,7 @@ def aria2_download(aria2_path, workdir, webui=None, session=None):
         import webbrowser
         if not webbrowser.open(webui):
             print('自动打开 aria2-webui 失败，请手动打开...')
-    
+
     cmd = '"%s"' \
           ' --enable-rpc' \
           ' --rpc-listen-port 6800' \

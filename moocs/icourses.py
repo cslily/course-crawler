@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """爱课程"""
 
-from .utils import *
+from moocs.utils import *
 from bs4 import BeautifulSoup
 import re
 import json
@@ -71,7 +71,8 @@ def start(url, config):
     rename = WORK_DIR.file('Names.txt') if CONFIG['rename'] else False
 
     if CONFIG['dpl']:
-        parse_res_list(video_list, rename, FILES['playlist'].write, parse_video)
+        parse_res_list(video_list, rename,
+                       FILES['playlist'].write, parse_video)
     else:
         parse_res_list(video_list, rename, parse_video)
 
@@ -79,4 +80,5 @@ def start(url, config):
         for file in list(FILES.keys()):
             del FILES[file]
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])

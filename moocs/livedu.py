@@ -2,13 +2,14 @@
 """北京高校优质课程研究会"""
 
 import time
-from .utils import *
+from moocs.utils import *
 from bs4 import BeautifulSoup
 
 
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
+
 
 def get_summary(url):
     """从课程主页面获取信息"""
@@ -17,10 +18,11 @@ def get_summary(url):
     data = {
         'kcid': course_id,
         'kcdm': course_id,
-        }
+    }
     res = CANDY.post(CONFIG['study_page'], data=data)
     study_soup = BeautifulSoup(res.text, 'html.parser')
-    name = study_soup.find('dl', class_='content-a-title').find('dt').find('span').string
+    name = study_soup.find(
+        'dl', class_='content-a-title').find('dt').find('span').string
 
     home_text = CANDY.get(url).text
     home_soup = BeautifulSoup(home_text, 'html.parser')
@@ -28,14 +30,15 @@ def get_summary(url):
     if home_soup.find('div', class_='vice-main-kcap'):
         for chapter_lable in home_soup.find('div', class_='vice-main-kcap')\
             .find('ul')\
-            .children:
+                .children:
             try:
-                chapter_names.insert(0, chapter_lable.find('div').find('span').string)
+                chapter_names.insert(
+                    0, chapter_lable.find('div').find('span').string)
             except:
                 pass
     else:
         for chapter_lable in home_soup.find('div', id='accordion')\
-            .find_all('h3'):
+                .find_all('h3'):
             chapter_names.insert(0, chapter_lable.text)
 
     dir_name = course_dir(name, '北京高校优质课程研究会')
@@ -56,7 +59,8 @@ def parse_resource(resource):
         ext = '.mp4'
         res_print(file_name + ext)
         resource.ext = ext
-        FILES['renamer'].write(re.search(r'(\w+\.mp4)', resource.meta).group(1), file_name, ext)
+        FILES['renamer'].write(
+            re.search(r'(\w+\.mp4)', resource.meta).group(1), file_name, ext)
         FILES['video'].write_string(resource.meta)
 
     elif resource.type == 'Document':
@@ -87,7 +91,7 @@ def get_resource(course_id):
     chapter_names = CONFIG['chapter_names']
     study_div = study_soup.find('div', class_='ation-a-main')
     left_div = study_div.find('div', class_='xx-main-left')
-    info_div = left_div.find('div', class_ = 'xx-left-main')
+    info_div = left_div.find('div', class_='xx-left-main')
     chapters = info_div.find_all('dl')
     for chapter in chapters:
         counter.add(0)
@@ -99,14 +103,15 @@ def get_resource(course_id):
         for lesson in lessons:
             counter.add(1)
             lesson_info = lesson.find('a')
-            lesson_id = re.search(r"xsxx\('(?P<lesson_id>.+)'\)", lesson_info.attrs.get('onclick')).group('lesson_id')
+            lesson_id = re.search(r"xsxx\('(?P<lesson_id>.+)'\)",
+                                  lesson_info.attrs.get('onclick')).group('lesson_id')
 
             data = {
                 'kcdm': course_id,
                 'zjdm': lesson_id,
-                }
-            res = CANDY.post(CONFIG['study_page'], data = data)
-            soup=BeautifulSoup(res.text,'html.parser')
+            }
+            res = CANDY.post(CONFIG['study_page'], data=data)
+            soup = BeautifulSoup(res.text, 'html.parser')
             study_div = soup.find('div', class_='ation-a-main')
             right_div = study_div.find('div', class_='xx-main-right')
             study_box = right_div.find('div', class_='xx-main-box')
@@ -115,10 +120,10 @@ def get_resource(course_id):
             resource_div = study_box.find('div', class_='study-L-text')
 
             # GET video url
-            video_div = resource_div.find('div', id = 'videoBj_1')
+            video_div = resource_div.find('div', id='videoBj_1')
             if video_div:
                 video_info = video_div.a.attrs.get('onclick')
-                video_params = list(map(lambda x:x.strip("'"),
+                video_params = list(map(lambda x: x.strip("'"),
                                         re.search(r'javascript:pauseVid\((?P<params>.+)\)', video_info).group('params').split(',')))
                 video_name = f'Video:{lesson_name}'
                 video_url = f'http://video.livedu.com.cn/{video_params[1]}?{video_params[0]}'
@@ -126,11 +131,13 @@ def get_resource(course_id):
                 video_list.append(Video(counter, video_name, video_url))
 
             # GET pdf url
-            pdf_iframe = resource_div.find('iframe', attrs={'name':'pdfContainer'})
+            pdf_iframe = resource_div.find(
+                'iframe', attrs={'name': 'pdfContainer'})
             if pdf_iframe:
                 pdf_div = pdf_iframe.parent
                 pdf_name = pdf_div.find('span').string.replace('.pdf', '')
-                pdf_url = re.search(r'cclj=(?P<pdf_url>http.+\.pdf)', pdf_iframe.attrs.get('src')).group('pdf_url')
+                pdf_url = re.search(
+                    r'cclj=(?P<pdf_url>http.+\.pdf)', pdf_iframe.attrs.get('src')).group('pdf_url')
                 outline.write(pdf_name, counter, 2, sign='*')
                 if CONFIG['doc']:
                     pdf_list.append(Document(counter, pdf_name, pdf_url))
@@ -141,7 +148,8 @@ def get_resource(course_id):
                 test_name = f'Test:{lesson_name}'
                 outline.write(test_name, counter, 2, sign='+')
                 if CONFIG['text']:
-                    test_list.append(RichText(counter, test_name, str(test_div)))
+                    test_list.append(
+                        RichText(counter, test_name, str(test_div)))
 
     if video_list:
         rename = WORK_DIR.file('Names.txt') if CONFIG['rename'] else False
@@ -157,6 +165,7 @@ def get_resource(course_id):
     if test_list:
         WORK_DIR.change('Texts')
         parse_res_list(test_list, None, parse_resource)
+
 
 def start(url, config, cookies=None):
     """调用接口函数"""
@@ -184,4 +193,5 @@ def start(url, config, cookies=None):
         for file in list(FILES.keys()):
             del FILES[file]
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path, webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
