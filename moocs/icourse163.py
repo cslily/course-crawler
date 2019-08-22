@@ -40,11 +40,11 @@ def parse_resource(resource):
     file_name = resource.file_name
     if resource.type == 'Video':
         if CONFIG['hasToken']:
-            video_token = CANDY.post('https://www.icourse163.org/web/j/resourceRpcBean.getVideoToken.rpc?csrfKey='+CONFIG['token'], data={
-                'videoId': resource.meta[0],
-                'targetId': CONFIG['term_id'],
-                'targetType': '0',
-            }).json()['result']['signature']
+            video_token = CANDY.post('https://www.icourse163.org/web/j/resourceRpcBean.getResourceToken.rpc?csrfKey='+CONFIG['token'], data={
+                'bizId': resource.meta[2],
+                'bizType': 1,
+                'contentType': 1,
+            }).json()['result']['videoSignDto']['signature']
             data = CANDY.post('https://vod.study.163.com/eds/api/v1/vod/video', data={
                 'videoId': resource.meta[0],
                 'signature': video_token,
@@ -69,6 +69,7 @@ def parse_resource(resource):
             resource.ext = ext
 
         else:
+            print("warn: 无 cookies 版将在未来版本中删除，建议您删除 icourse163.json 并重新输入 cookies")
             resolutions = ['Shd', 'Hd', 'Sd']
             for sp in resolutions[CONFIG['resolution']:]:
                 # TODO: 增加视频格式选择
