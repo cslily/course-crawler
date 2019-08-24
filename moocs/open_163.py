@@ -3,13 +3,16 @@
 
 import time
 
-from moocs.utils import *
 from bs4 import BeautifulSoup
 from Crypto.Cipher import AES
+
+from moocs.utils import *
+from utils.crawler import Crawler
 
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
+VIDEOS = []
 
 
 def get_summary(url):
@@ -111,6 +114,7 @@ def parse_resource(resource):
     FILES['renamer'].write(re.search(r'(\w+\%s)' %
                                      ext, video_url).group(1), file_name, ext)
     FILES['video'].write_string(video_url)
+    VIDEOS.append((video_url, file_name+ext))
     if not CONFIG['sub']:
         return
     WORK_DIR.change('Videos')
@@ -166,9 +170,11 @@ def start(url, config, cookies=None):
     # 获得资源
     get_resource(course_info[0])
 
-    if CONFIG['aria2']:
-        for file in list(FILES.keys()):
-            del FILES[file]
+    if CONFIG['aria2'] or CONFIG['download_video']:
+        close_all_files(FILES)
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path,
-                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        if CONFIG['aria2']:
+            aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                           webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        elif CONFIG['download_video']:
+            segment_download(VIDEOS, CANDY, num_thread=CONFIG["num_thread"])

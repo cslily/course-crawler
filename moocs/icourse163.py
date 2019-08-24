@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 """中国大学MOOC"""
 
-import time
 import json
+import time
+
 from moocs.utils import *
+from utils.crawler import Crawler
 
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
+VIDEOS = []
 
 
 def get_summary(url):
@@ -66,10 +69,12 @@ def parse_resource(resource):
             FILES['renamer'].write(
                 re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
             FILES['video'].write_string(url)
+            VIDEOS.append((url, file_name+ext))
             resource.ext = ext
 
         else:
-            print("warn: 无 cookies 版将在未来版本中删除，建议您删除 icourse163.json 并重新输入 cookies")
+            print("warn: 无 cookies 版即将在未来版本中移除，建议您删除 icourse163.json "
+                  "并重新输入 cookies 以使用有 cookies 版")
             resolutions = ['Shd', 'Hd', 'Sd']
             for sp in resolutions[CONFIG['resolution']:]:
                 # TODO: 增加视频格式选择
@@ -84,6 +89,7 @@ def parse_resource(resource):
             FILES['renamer'].write(
                 re.search(r'(\w+\.((m3u8)|(mp4)|(flv)))', url).group(1), file_name, ext)
             FILES['video'].write_string(url)
+            VIDEOS.append((url, file_name+ext))
             resource.ext = ext
 
         if not CONFIG['sub']:
@@ -219,9 +225,12 @@ def start(url, config, cookies):
 
     get_resource(term_id)
 
-    if CONFIG['aria2']:
-        for file in list(FILES.keys()):
-            del FILES[file]
+    if CONFIG['aria2'] or CONFIG['download_video']:
+        close_all_files(FILES)
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path,
-                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        if CONFIG['aria2']:
+            aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                           webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        elif CONFIG['download_video']:
+            segment_download(VIDEOS, WORK_DIR.path, CANDY,
+                             num_thread=CONFIG["num_thread"])

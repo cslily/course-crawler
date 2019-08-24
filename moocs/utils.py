@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """核心程序组件"""
 
-import re
 import os
-import requests
 import platform
+import re
 import subprocess
+
+from utils.segment_dl import DownloadManager, ResourceDispenser
 
 SYS = platform.system()
 
@@ -165,7 +166,7 @@ class Renamer(ClassicFile):
     def __init__(self, file):
         """初始化文件，并写入调用 UTF-8 代码页的命令"""
 
-        file = file.format(**{'ext': Renamer.ext})
+        file = file.format(ext=Renamer.ext)
         super().__init__(file)
         if SYS == 'Windows':
             self.write_string('CHCP 65001\n')
@@ -201,44 +202,6 @@ class Outline(ClassicFile):
         print('%s%s%s' % ('  ' * level, Outline.res_type[sign], string))
         name = '%s%s {%s}%s' % ('  ' * level, string, counter[level], sign)
         self.write_string(name)
-
-
-class Crawler(requests.Session):
-    """Session 类扩展
-
-    继承并扩展了 requests 的 Session 类。
-
-    属性
-        header：默认使用的浏览器头部。
-    """
-
-    header = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                            'Chrome/71.0.3578.80 Safari/537.36'}
-
-    def __init__(self):
-        """初始化 Session，并更新头部"""
-
-        super().__init__()
-        self.headers.update(Crawler.header)
-
-    def set_cookies(self, cookies):
-        """传入一个字典，用于设置 cookies"""
-
-        requests.utils.add_dict_to_cookiejar(self.cookies, cookies)
-
-    def download_bin(self, url, file_name, **kw):
-        """下载二进制文件"""
-
-        res = self.get(url, **kw).content
-        with open(file_name, 'wb') as f:
-            f.write(res)
-
-    def download(self, url, file_name, **kw):
-        """下载文件为 UTF-8 编码"""
-
-        res = self.get(url, **kw).text
-        with open(file_name, 'w', encoding='utf_8') as f:
-            f.write(res)
 
 
 class WorkingDir(object):
@@ -381,3 +344,25 @@ def aria2_download(aria2_path, workdir, webui=None, session=None):
     print('正在使用 aria2 下载视频，请不要在下载过程中关闭此窗口~')
     subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
     print('aria2 已关闭~')
+
+
+def close_all_files(files):
+    """ 关闭所有文件对象 """
+    for file in list(files.keys()):
+        del files[file]
+
+
+def segment_download(videos, workdir, spider, num_thread=30, segment_size=10*1024*1024):
+    """ 调用分段下载器进行下载 """
+
+    resources = []
+    for url, file_name in videos:
+        file_path = os.path.join(workdir, file_name)
+        resources.append((url, file_path))
+    dispenser = ResourceDispenser(resources, num_thread, segment_size, spider)
+    dispenser.dispense(log=False)
+    dispenser.run()
+
+    manager = DownloadManager(dispenser.files)
+    manager.run()
+    print('视频已全部下载完成~')

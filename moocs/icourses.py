@@ -5,10 +5,12 @@ from moocs.utils import *
 from bs4 import BeautifulSoup
 import re
 import json
+from utils.crawler import Crawler
 
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
+VIDEOS = []
 
 
 def get_content(url):
@@ -40,7 +42,9 @@ def parse_res(js):
         res_print(title)
         outline.write_string('%s {%s}#' % (title, counter_str))
         FILES['videos'].write_string(url)
-        video_list.append(Video(counter_str, title, url))
+        video = Video(counter_str, title, url)
+        video_list.append(video)
+        VIDEOS.append((url, video.file_name+".mp4"))
 
     return video_list
 
@@ -76,9 +80,11 @@ def start(url, config):
     else:
         parse_res_list(video_list, rename, parse_video)
 
-    if CONFIG['aria2']:
-        for file in list(FILES.keys()):
-            del FILES[file]
+    if CONFIG['aria2'] or CONFIG['download_video']:
+        close_all_files(FILES)
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path,
-                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        if CONFIG['aria2']:
+            aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                           webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        elif CONFIG['download_video']:
+            segment_download(VIDEOS, CANDY, num_thread=CONFIG["num_thread"])

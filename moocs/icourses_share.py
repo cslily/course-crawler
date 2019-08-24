@@ -2,12 +2,15 @@
 """爱课程 资源共享课"""
 import re
 
-from moocs.utils import *
 from bs4 import BeautifulSoup
+
+from moocs.utils import *
+from utils.crawler import Crawler
 
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
+VIDEOS = []
 
 
 def get_summary(url):
@@ -52,6 +55,7 @@ def parse_resource(resource):
         FILES['renamer'].write(
             re.search(r'(\w+\.mp4)', url).group(1), file_name)
         FILES['video'].write_string(url)
+        VIDEOS.append((url, file_name+".mp4"))
         #resource.ext = ext
 
         if not CONFIG['sub']:
@@ -96,11 +100,11 @@ def get_resource(course_id):
                 'a', attrs={'title': '教学设计'}).attrs['data-url']
             exam_id = chapter.find(
                 'a', attrs={'title': '评价考核'}).attrs['data-id']
-            exam_contents = requests.post(
+            exam_contents = CANDY.post(
                 'http://www.icourses.cn/web//sword/common/getTextBody', data={'id': exam_id}).text
             textbook_id = chapter.find(
                 'a', attrs={'title': '教材内容'}).attrs['data-id']
-            textbook_contents = requests.post(
+            textbook_contents = CANDY.post(
                 'http://www.icourses.cn/web//sword/common/getTextBody', data={'id': textbook_id}).text
             WORK_DIR.change('Introduction')
             outline.write('重点难点', counter, 2, sign='*')
@@ -132,7 +136,7 @@ def get_resource(course_id):
                     'a', class_='chapter-body-content-text')
                 lesson_id = lesson_info.attrs['data-secid']
                 lesson_name = lesson_info.text.replace('\n', '')
-            rej = requests.post(
+            rej = CANDY.post(
                 'http://www.icourses.cn/web//sword/portal/getRess', data={'sectionId': lesson_id}).json()
 
             outline.write(lesson_name, counter, 1)
@@ -187,9 +191,11 @@ def start(url, config, cookies=None):
     # 获得资源
     get_resource(course_info[0])
 
-    if CONFIG['aria2']:
-        for file in list(FILES.keys()):
-            del FILES[file]
+    if CONFIG['aria2'] or CONFIG['download_video']:
+        close_all_files(FILES)
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path,
-                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        if CONFIG['aria2']:
+            aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                           webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        elif CONFIG['download_video']:
+            segment_download(VIDEOS, CANDY, num_thread=CONFIG["num_thread"])

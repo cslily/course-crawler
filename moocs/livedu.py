@@ -2,13 +2,16 @@
 """北京高校优质课程研究会"""
 
 import time
-from moocs.utils import *
+
 from bs4 import BeautifulSoup
 
+from moocs.utils import *
+from utils.crawler import Crawler
 
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
+VIDEOS = []
 
 
 def get_summary(url):
@@ -62,6 +65,7 @@ def parse_resource(resource):
         FILES['renamer'].write(
             re.search(r'(\w+\.mp4)', resource.meta).group(1), file_name, ext)
         FILES['video'].write_string(resource.meta)
+        VIDEOS.append((resource.meta, file_name+ext))
 
     elif resource.type == 'Document':
         if WORK_DIR.exist(file_name + '.pdf'):
@@ -122,11 +126,8 @@ def get_resource(course_id):
             # GET video url
             video_div = resource_div.find('div', id='videoBj_1')
             if video_div:
-                video_info = video_div.a.attrs.get('onclick')
-                video_params = list(map(lambda x: x.strip("'"),
-                                        re.search(r'javascript:pauseVid\((?P<params>.+)\)', video_info).group('params').split(',')))
-                video_name = f'Video:{lesson_name}'
-                video_url = f'http://video.livedu.com.cn/{video_params[1]}?{video_params[0]}'
+                video_url = video_div.find('input', id='sp').attrs.get('value')
+                video_name = 'Video:{}'.format(lesson_name)
                 outline.write(video_name, counter, 2, sign='#')
                 video_list.append(Video(counter, video_name, video_url))
 
@@ -145,7 +146,7 @@ def get_resource(course_id):
             # GET test text
             test_div = study_box.find('div', class_='zy-a-list')
             if test_div:
-                test_name = f'Test:{lesson_name}'
+                test_name = 'Test:{}'.format(lesson_name)
                 outline.write(test_name, counter, 2, sign='+')
                 if CONFIG['text']:
                     test_list.append(
@@ -189,9 +190,11 @@ def start(url, config, cookies=None):
     # 获得资源
     get_resource(course_info[0])
 
-    if CONFIG['aria2']:
-        for file in list(FILES.keys()):
-            del FILES[file]
+    if CONFIG['aria2'] or CONFIG['download_video']:
+        close_all_files(FILES)
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path,
-                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        if CONFIG['aria2']:
+            aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                           webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        elif CONFIG['download_video']:
+            segment_download(VIDEOS, CANDY, num_thread=CONFIG["num_thread"])

@@ -8,7 +8,7 @@ import json
 import argparse
 
 
-def store_cookies(file_name, restore=False):
+def store_cookies(mooc_type, restore=False):
     """存储并返回 Cookie 字典"""
 
     def cookie_to_json():
@@ -18,7 +18,7 @@ def store_cookies(file_name, restore=False):
         raw_cookies = input('> ')
         if not raw_cookies:
             return {}
-        if raw_cookies[:7] == 'Cookie:':
+        if raw_cookies[:7].lower() == 'cookie:':
             raw_cookies = raw_cookies[7:]
 
         for cookie in raw_cookies.split(';'):
@@ -27,17 +27,20 @@ def store_cookies(file_name, restore=False):
 
         return cookies_dict
 
-    file_name = os.path.join(sys.path[0], file_name)
-    if restore or not os.path.isfile(file_name):
+    file_path = os.path.join(sys.path[0], "cookies.json")
+    if not os.path.isfile(file_path):
+        cookies = {}
+    else:
+        with open(file_path, 'r') as cookies_file:
+            cookies = json.load(cookies_file)
+
+    if restore or not cookies.get(mooc_type):
         print("输入 Cookie：")
-        cookies = cookie_to_json()
-        with open(file_name, 'w') as f:
-            json.dump(cookies, f)
+        cookies[mooc_type] = cookie_to_json()
+        with open(file_path, 'w') as f:
+            json.dump(cookies, f, indent=2)
 
-    with open(file_name) as cookies_file:
-        cookies = json.load(cookies_file)
-
-    return cookies
+    return cookies[mooc_type]
 
 
 def main():
@@ -56,6 +59,9 @@ def main():
     parser.add_argument('--no-file', action='store_false', help='不下载附件')
     parser.add_argument('--no-text', action='store_false', help='不下载富文本')
     parser.add_argument('--no-dpl', action='store_false', help='不生成播放列表')
+    parser.add_argument('--download-video',
+                        action='store_true', help='使用分段下载器直接下载视频')
+    parser.add_argument('--num-thread', default='30', help='分段下载器线程数')
     parser.add_argument('--aria2', default=None,
                         help='aria2路径，配置后自动调用aria2下载视频')
     parser.add_argument('--aria2-webui', default=None,
@@ -68,19 +74,20 @@ def main():
 
     config = {'doc': args.no_doc, 'sub': args.no_sub, 'file': args.no_file, 'text': args.no_text,
               'dpl': args.no_dpl, 'rename': args.inter, 'dir': args.d, 'resolution': resolutions.index(args.r.lower()),
-              'aria2': args.aria2, 'aria2-webui': args.aria2_webui, 'aria2-session': args.aria2_session}
+              'aria2': args.aria2, 'aria2-webui': args.aria2_webui, 'aria2-session': args.aria2_session,
+              'download_video': args.download_video, 'num_thread': int(args.num_thread)}
 
     if re.match(r'https?://www.icourse163.org/(spoc/)?(course|learn)/', args.url):
         from moocs import icourse163
-        cookies = store_cookies('icourse163.json', restore=args.c)
+        cookies = store_cookies('icourse163', restore=args.c)
         icourse163.start(args.url, config, cookies)
     elif re.match(r'https?://www.xuetangx.com/courses/.+/about', args.url):
         from moocs import xuetangx
-        cookies = store_cookies('xuetangx.json', restore=args.c)
+        cookies = store_cookies('xuetangx', restore=args.c)
         xuetangx.start(args.url, config, cookies)
     elif re.match(r'https?://mooc.study.163.com/(course|learn)/', args.url):
         from moocs import study_mooc
-        cookies = store_cookies('study_163_mooc.json', restore=args.c)
+        cookies = store_cookies('study_163_mooc', restore=args.c)
         study_mooc.start(args.url, config, cookies)
     elif re.match(r'https?://study.163.com/course/', args.url):
         from moocs import study_163
@@ -90,7 +97,7 @@ def main():
         open_163.start(args.url, config)
     elif re.match(r'https?://www.cnmooc.org/portal/course/', args.url):
         from moocs import cnmooc
-        cookies = store_cookies('cnmooc.json', restore=args.c)
+        cookies = store_cookies('cnmooc', restore=args.c)
         cnmooc.start(args.url, config, cookies)
     elif re.match(r'https?://www.icourses.cn/web/sword/portal/videoDetail', args.url):
         from moocs import icourses
@@ -101,7 +108,7 @@ def main():
         icourses_share.start(args.url, config)
     elif re.match(r'https?://www.livedu.com.cn/ispace4.0/moocxjkc/toKcView.do\?kcid=', args.url):
         from moocs import livedu
-        cookies = store_cookies('livedu.json', restore=args.c)
+        cookies = store_cookies('livedu', restore=args.c)
         livedu.start(args.url, config, cookies)
     else:
         print('课程地址有误！')

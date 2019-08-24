@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """好大学在线"""
 
-from moocs.utils import *
 from bs4 import BeautifulSoup
+
+from moocs.utils import *
+from utils.crawler import Crawler
 
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
+VIDEOS = []
 
 
 def get_summary(url):
@@ -88,6 +91,7 @@ def parse_resource(video):
     url = res['node']['flvUrl']
     FILES['videos'].write_string(url)
     FILES['renamer'].write(url.split('/')[-1], video.file_name)
+    VIDEOS.append((url, video.file_name+".mp4"))
     if CONFIG['sub']:
         exts = res['node']['nodeExts']
         for ext in exts:
@@ -149,9 +153,11 @@ def start(url, config, cookies=None):
     if CONFIG['doc']:
         get_doc(resource[1])
 
-    if CONFIG['aria2']:
-        for file in list(FILES.keys()):
-            del FILES[file]
+    if CONFIG['aria2'] or CONFIG['download_video']:
+        close_all_files(FILES)
         WORK_DIR.change('Videos')
-        aria2_download(CONFIG['aria2'], WORK_DIR.path,
-                       webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        if CONFIG['aria2']:
+            aria2_download(CONFIG['aria2'], WORK_DIR.path,
+                           webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
+        elif CONFIG['download_video']:
+            segment_download(VIDEOS, CANDY, num_thread=CONFIG["num_thread"])
