@@ -2,6 +2,7 @@
 """学堂在线"""
 
 import json
+import sys
 
 from bs4 import BeautifulSoup
 
@@ -29,10 +30,10 @@ def get_book(url):
         soup = BeautifulSoup(res, 'lxml')
         WORK_DIR.change('Books', str(shelf_count))
         for book_count, book in enumerate(soup.select('#booknav a'), 1):
-            res_print(book.string)
             file_name = Resource.file_to_save(book.string) + '.pdf'
-            CANDY.download_bin(
-                BASE_URL + book['rel'][0], WORK_DIR.file(file_name))
+            if WORK_DIR.need_download(file_name, CONFIG["override"]):
+                CANDY.download_bin(
+                    BASE_URL + book['rel'][0], WORK_DIR.file(file_name))
 
 
 def get_handout(url):
@@ -54,16 +55,16 @@ def get_video(video):
     """根据视频 ID 和文件名字获取视频信息"""
 
     file_name = video.file_name
-    res_print(file_name + '.mp4')
-    res = CANDY.get('http://xuetangx.com/videoid2source/' + video.meta).text
-    try:
-        video_url = json.loads(res)['sources']['quality20'][0]
-    except:
-        video_url = json.loads(res)['sources']['quality10'][0]
-    FILES['videos'].write_string(video_url)
-    FILES['renamer'].write(
-        re.search(r'(\w+-[12]0.mp4)', video_url).group(1), file_name)
-    VIDEOS.append((video_url, file_name+".mp4"))
+    if WORK_DIR.need_download(file_name+'.mp4', CONFIG["override"]):
+        res = CANDY.get('http://xuetangx.com/videoid2source/' + video.meta).text
+        try:
+            video_url = json.loads(res)['sources']['quality20'][0]
+        except:
+            video_url = json.loads(res)['sources']['quality10'][0]
+        FILES['videos'].write_string(video_url)
+        FILES['renamer'].write(
+            re.search(r'(\w+-[12]0.mp4)', video_url).group(1), file_name)
+        VIDEOS.append((video_url, file_name+".mp4"))
 
 
 def get_content(url):
@@ -203,8 +204,8 @@ def start(url, config, cookies=None):
     if status.json()['login']:
         print('验证成功！')
     else:
-        print('Cookie 失效。请获取新的 Cookie 并删除 xuetangx.json。')
-        return
+        print('Cookie 失效。请获取新的 Cookie ')
+        sys.exit(1)
 
     course_name = get_summary(url)
 

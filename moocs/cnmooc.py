@@ -84,25 +84,27 @@ def get_resource(course_nav):
 def parse_resource(video):
     """解析视频地址"""
 
-    res_print(video.file_name)
     res = CANDY.post('https://www.cnmooc.org/study/play.mooc',
-                     data={'itemId': video.meta, 'itemType': '10', 'testPaperId': ''}).text
+                    data={'itemId': video.meta, 'itemType': '10', 'testPaperId': ''}).text
     soup = BeautifulSoup(res, 'lxml')
     node_id = soup.find(id='nodeId')['value']
 
     res = CANDY.post('https://www.cnmooc.org/item/detail.mooc',
-                     data={'nodeId': node_id, 'itemId': video.meta}).json()
-    url = res['node']['flvUrl']
-    FILES['videos'].write_string(url)
-    FILES['renamer'].write(url.split('/')[-1], video.file_name)
-    VIDEOS.append((url, video.file_name+".mp4"))
+                    data={'nodeId': node_id, 'itemId': video.meta}).json()
+    if WORK_DIR.need_download(video.file_name+".mp4", CONFIG["override"]):
+        url = res['node']['flvUrl']
+        FILES['videos'].write_string(url)
+        FILES['renamer'].write(url.split('/')[-1], video.file_name)
+        VIDEOS.append((url, video.file_name+".mp4"))
+    
     if CONFIG['sub']:
         exts = res['node']['nodeExts']
         for ext in exts:
             file_name = '%s%s.srt' % (video.file_name, '' if len(
                 exts) == 1 else '_' + ext['languageCode'])
-            CANDY.download_bin('https://static.cnmooc.org' +
-                               ext['node']['rsUrl'], WORK_DIR.file(file_name))
+            if WORK_DIR.need_download(file_name, CONFIG["override"]):
+                CANDY.download_bin('https://static.cnmooc.org' +
+                                ext['node']['rsUrl'], WORK_DIR.file(file_name))
 
 
 def get_doc(doc_list):
@@ -119,8 +121,7 @@ def get_doc(doc_list):
             continue
         ext = url.split('.')[-1]
         file_name = WORK_DIR.file(doc.file_name + '.' + ext)
-        res_print(doc.name)
-        if not WORK_DIR.exist(file_name):
+        if WORK_DIR.need_download(file_name, CONFIG["override"]):
             CANDY.download_bin('https://static.cnmooc.org' + url, file_name)
 
 

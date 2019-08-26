@@ -3,6 +3,7 @@
 
 import json
 import time
+import sys
 
 from moocs.utils import *
 from utils.crawler import Crawler
@@ -46,52 +47,32 @@ def parse_resource(resource):
 
     file_name = resource.file_name
     if resource.type == 'Video':
-        if CONFIG['hasToken']:
-            video_token = CANDY.post('https://www.icourse163.org/web/j/resourceRpcBean.getResourceToken.rpc?csrfKey='+CONFIG['token'], data={
-                'bizId': resource.meta[2],
-                'bizType': 1,
-                'contentType': 1,
-            }).json()['result']['videoSignDto']['signature']
-            data = CANDY.post('https://vod.study.163.com/eds/api/v1/vod/video', data={
-                'videoId': resource.meta[0],
-                'signature': video_token,
-                'clientType': '1'
-            }).json()
+        video_token = CANDY.post('https://www.icourse163.org/web/j/resourceRpcBean.getResourceToken.rpc?csrfKey='+CONFIG['token'], data={
+            'bizId': resource.meta[2],
+            'bizType': 1,
+            'contentType': 1,
+        }).json()['result']['videoSignDto']['signature']
+        data = CANDY.post('https://vod.study.163.com/eds/api/v1/vod/video', data={
+            'videoId': resource.meta[0],
+            'signature': video_token,
+            'clientType': '1'
+        }).json()
 
-            resolutions = [3, 2, 1]
-            for sp in resolutions[CONFIG['resolution']:]:
-                # TODO: 增加视频格式选择
-                for video in data['result']['videos']:
-                    if video['quality'] == sp and video['format'] == 'mp4':
-                        url = video['videoUrl']
-                        ext = '.mp4'
-                        break
-                else:
-                    continue
-                break
-            res_print(file_name + ext)
+        resolutions = [3, 2, 1]
+        for sp in resolutions[CONFIG['resolution']:]:
+            # TODO: 增加视频格式选择
+            for video in data['result']['videos']:
+                if video['quality'] == sp and video['format'] == 'mp4':
+                    url = video['videoUrl']
+                    ext = '.mp4'
+                    break
+            else:
+                continue
+            break
+        
+        if WORK_DIR.need_download(file_name + ext, CONFIG["override"]):
             FILES['renamer'].write(
                 re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
-            FILES['video'].write_string(url)
-            VIDEOS.append((url, file_name+ext))
-            resource.ext = ext
-
-        else:
-            print("warn: 无 cookies 版即将在未来版本中移除，建议您删除 icourse163.json "
-                  "并重新输入 cookies 以使用有 cookies 版")
-            resolutions = ['Shd', 'Hd', 'Sd']
-            for sp in resolutions[CONFIG['resolution']:]:
-                # TODO: 增加视频格式选择
-                # video_info = re.search(r'%sUrl="(?P<url>.*?(?P<ext>\.((m3u8)|(mp4)|(flv))).*?)"' % sp, res)
-                video_info = re.search(
-                    r'(?P<ext>mp4)%sUrl="(?P<url>.*?\.(?P=ext).*?)"' % sp, res)
-                if video_info:
-                    url, ext = video_info.group('url', 'ext')
-                    ext = '.' + ext
-                    break
-            res_print(file_name + ext)
-            FILES['renamer'].write(
-                re.search(r'(\w+\.((m3u8)|(mp4)|(flv)))', url).group(1), file_name, ext)
             FILES['video'].write_string(url)
             VIDEOS.append((url, file_name+ext))
             resource.ext = ext
@@ -99,7 +80,6 @@ def parse_resource(resource):
         if not CONFIG['sub']:
             return
         subtitles = re.findall(r'name="(.+)";.*url="(.*?)"', res)
-        WORK_DIR.change('Videos')
         for subtitle in subtitles:
             if len(subtitles) == 1:
                 sub_name = file_name + '.srt'
@@ -107,22 +87,21 @@ def parse_resource(resource):
                 subtitle_lang = subtitle[0].encode(
                     'utf_8').decode('unicode_escape')
                 sub_name = file_name + '_' + subtitle_lang + '.srt'
-            res_print(sub_name)
+            if not WORK_DIR.need_download(sub_name, CONFIG["override"]):
+                continue
             CANDY.download_bin(subtitle[1], WORK_DIR.file(sub_name))
 
     elif resource.type == 'Document':
-        if WORK_DIR.exist(file_name + '.pdf'):
+        if not WORK_DIR.need_download(file_name + '.pdf', CONFIG["override"]):
             return
         pdf_url = re.search(r'textOrigUrl:"(.*?)"', res).group(1)
-        res_print(file_name + '.pdf')
         CANDY.download_bin(pdf_url, WORK_DIR.file(file_name + '.pdf'))
 
     elif resource.type == 'Rich':
-        if WORK_DIR.exist(file_name + '.html'):
+        if not WORK_DIR.need_download(file_name + '.html', CONFIG["override"]):
             return
         text = re.search(r'htmlContent:"(.*)",id',
                          res.encode('utf_8').decode('unicode_escape'), re.S).group(1)
-        res_print(file_name + '.html')
         with open(WORK_DIR.file(file_name + '.html'), 'w', encoding='utf_8') as file:
             file.write(text)
 
@@ -186,10 +165,10 @@ def get_resource(term_id):
                         outline.write(file_name, counter, 2, sign='!')
 
                         WORK_DIR.change('Files')
-                        res_print(params['fileName'])
                         file_name = '%s %s' % (counter, file_name)
-                        CANDY.download_bin('https://www.icourse163.org/course/attachment.htm',
-                                           WORK_DIR.file(file_name), params=params)
+                        if WORK_DIR.need_download(file_name, CONFIG["override"]):
+                            CANDY.download_bin('https://www.icourse163.org/course/attachment.htm',
+                                            WORK_DIR.file(file_name), params=params)
             counter.reset()
 
     if video_list:
@@ -216,10 +195,10 @@ def start(url, config, cookies):
     CONFIG.update(config)
 
     if cookies.get('NTESSTUDYSI'):
-        CONFIG['hasToken'] = True
         CONFIG['token'] = cookies.get('NTESSTUDYSI')
     else:
-        CONFIG['hasToken'] = False
+        print("Cookies 无效，请重新获取 Cookie ")
+        sys.exit(1)
 
     term_id, dir_name = get_summary(url)
     WORK_DIR = WorkingDir(CONFIG['dir'], dir_name)

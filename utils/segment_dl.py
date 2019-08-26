@@ -174,10 +174,7 @@ class Segment():
                 else:
                     f.write(res.content)
             # 从临时文件迁移，并删除临时文件
-            with open(self.tmp_path, "rb") as fr:
-                with open(self.path, "wb") as fw:
-                    fw.write(fr.read())
-            os.remove(self.tmp_path)
+            os.rename(self.tmp_path, self.path)
         self.switch_status()
 
         # 检查是否所有片段均已下载完成，如果是则合并

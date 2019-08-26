@@ -55,23 +55,21 @@ def parse_resource(resource):
                 url = video_urls[sp]
                 break
 
-        res_print(file_name + '.mp4')
-        FILES['renamer'].write(
-            re.search(r'(\w+\.mp4)', url).group(1), file_name)
-        FILES['video'].write_string(url)
-        VIDEOS.append((url, file_name+".mp4"))
-        #resource.ext = ext
+        if WORK_DIR.need_download(file_name+".mp4", CONFIG["override"]):
+            FILES['renamer'].write(
+                re.search(r'(\w+\.mp4)', url).group(1), file_name)
+            FILES['video'].write_string(url)
+            VIDEOS.append((url, file_name+".mp4"))
+            #resource.ext = ext
 
         if not CONFIG['sub']:
             return
         # 暂未发现字幕
 
     elif resource.type == 'Document':
-        if WORK_DIR.exist(file_name + '.pdf'):
-            return
         pdf_url = resource.meta['fullResUrl']
-        res_print(file_name + '.pdf')
-        CANDY.download_bin(pdf_url, WORK_DIR.file(file_name + '.pdf'))
+        if WORK_DIR.need_download(file_name+".pdf", CONFIG["override"]):
+            CANDY.download_bin(pdf_url, WORK_DIR.file(file_name + '.pdf'))
 
 
 def get_resource(course_id):

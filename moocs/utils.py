@@ -244,6 +244,14 @@ class WorkingDir(object):
 
         return os.path.exists(os.path.join(self.path, file_name))
 
+    def need_download(self, file_name, override=False):
+        """判断当前文件是否需要下载，并且打印输出"""
+        
+        need = override or not self.exist(file_name)
+        sign = ">" if need else "!"
+        res_print(file_name, sign=sign)
+        return need
+
 
 class Counter(object):
     """计数器类
@@ -281,10 +289,10 @@ class Counter(object):
         self.counter[-1] = 0
 
 
-def res_print(file_name):
+def res_print(file_name, sign=">"):
     """打印一个将要输出的文件"""
 
-    print('------>', file_name)
+    print('------{}'.format(sign), file_name)
 
 
 def course_dir(course_name, institution):
@@ -346,14 +354,14 @@ def aria2_download(aria2_path, workdir, webui=None, session=None):
     print('aria2 已关闭~')
 
 
-def segment_download(videos, workdir, spider, num_thread=30, segment_size=10*1024*1024):
+def segment_download(videos, workdir, spider, override=False, num_thread=30, segment_size=10*1024*1024):
     """ 调用分段下载器进行下载 """
 
     resources = []
     for url, file_name in videos:
         file_path = os.path.join(workdir, file_name)
         resources.append((url, file_path))
-    manager = FileManager(num_thread, segment_size, spider=spider)
+    manager = FileManager(num_thread, segment_size, spider=spider, override=override)
     manager.dispense_resources(resources, log=False)
     manager.run()
     manager.monitoring()

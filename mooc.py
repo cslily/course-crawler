@@ -50,10 +50,12 @@ def main():
 
     parser = argparse.ArgumentParser(description='Course Crawler')
     parser.add_argument('url', help='课程地址')
-    parser.add_argument('-c', action='store_true',
+    parser.add_argument('-c', '--restore-cookies', action='store_true',
                         help='执行任务的时候重新输入 cookies')
-    parser.add_argument('-d', default=r'', help='下载目录')
-    parser.add_argument('-r', default='shd', help='视频清晰度')
+    parser.add_argument('-d', '--dir', default=r'', help='下载目录')
+    parser.add_argument('-r', '--quality', default='shd', help='视频清晰度')
+    parser.add_argument('-w', '--override',
+                        action='store_true', help='强制覆盖重新下载')
     parser.add_argument('--inter', action='store_true', help='交互式修改文件名')
     parser.add_argument('--no-doc', action='store_false',
                         help='不下载 PDF、Word 等文档')
@@ -75,7 +77,8 @@ def main():
     resolutions = ['shd', 'hd', 'sd']
 
     config = {'doc': args.no_doc, 'sub': args.no_sub, 'file': args.no_file, 'text': args.no_text,
-              'dpl': args.no_dpl, 'rename': args.inter, 'dir': args.d, 'resolution': resolutions.index(args.r.lower()),
+              'dpl': args.no_dpl, 'rename': args.inter, 'dir': args.dir, 'resolution': resolutions.index(args.quality.lower()),
+              'override': args.override,
               'aria2': args.aria2, 'aria2-webui': args.aria2_webui, 'aria2-session': args.aria2_session,
               'download_video': args.download_video, 'num_thread': int(args.num_thread)}
 
@@ -101,9 +104,9 @@ def main():
     else:
         print('课程地址有误！')
         sys.exit(1)
-    
+
     if mooc.need_cookies:
-        cookies = store_cookies(mooc.name, restore=args.c)
+        cookies = store_cookies(mooc.name, restore=args.restore_cookies)
     else:
         cookies = None
 
@@ -118,7 +121,8 @@ def main():
                            webui=config['aria2-webui'], session=config['aria2-session'])
         elif config['download_video']:
             spider, videos = mooc.exports["spider"], mooc.exports["videos"]
-            segment_download(videos, workdir.path, spider, num_thread=config["num_thread"])
+            segment_download(videos, workdir.path, spider, override=config["override"],
+                             num_thread=config["num_thread"])
 
 
 if __name__ == '__main__':

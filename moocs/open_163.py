@@ -114,21 +114,21 @@ def parse_resource(resource):
                     resource.ext = ext
                     break
 
-    res_print(file_name + ext)
-    FILES['renamer'].write(re.search(r'(\w+\%s)' %
-                                     ext, video_url).group(1), file_name, ext)
-    FILES['video'].write_string(video_url)
-    VIDEOS.append((video_url, file_name+ext))
+    if WORK_DIR.need_download(file_name+ext, CONFIG["override"]):
+        FILES['renamer'].write(re.search(r'(\w+\%s)' %
+                                        ext, video_url).group(1), file_name, ext)
+        FILES['video'].write_string(video_url)
+        VIDEOS.append((video_url, file_name+ext))
+
     if not CONFIG['sub']:
         return
-    WORK_DIR.change('Videos')
     for subtitle_lang, subtitle_url in subs.items():
         if len(subs) == 1:
             sub_name = file_name + '.srt'
         else:
             sub_name = file_name + '_' + subtitle_lang + '.srt'
-        res_print(sub_name)
-        CANDY.download_bin(subtitle_url, WORK_DIR.file(sub_name))
+        if WORK_DIR.need_download(sub_name, CONFIG["override"]):
+            CANDY.download_bin(subtitle_url, WORK_DIR.file(sub_name))
 
 
 def get_resource(links):

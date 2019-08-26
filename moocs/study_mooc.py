@@ -90,12 +90,12 @@ def parse_resource(resource):
             else:
                 continue
             break
-        res_print(file_name + ext)
-        FILES['renamer'].write(
-            re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
-        FILES['video'].write_string(url)
-        VIDEOS.append((url, file_name+ext))
-        resource.ext = ext
+        if WORK_DIR.need_download(file_name + ext, CONFIG["override"]):
+            FILES['renamer'].write(
+                re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
+            FILES['video'].write_string(url)
+            VIDEOS.append((url, file_name+ext))
+            resource.ext = ext
 
         if not CONFIG['sub']:
             return
@@ -108,22 +108,20 @@ def parse_resource(resource):
                 subtitle_lang = subtitle[0].encode(
                     'utf_8').decode('unicode_escape')
                 sub_name = file_name + '_' + subtitle_lang + '.srt'
-            res_print(sub_name)
-            CANDY.download_bin(subtitle[1], WORK_DIR.file(sub_name))
+            if WORK_DIR.need_download(sub_name, CONFIG["override"]):
+                CANDY.download_bin(subtitle[1], WORK_DIR.file(sub_name))
 
     elif resource.type == 'Document':
-        if WORK_DIR.exist(file_name + '.pdf'):
+        if not WORK_DIR.need_download(file_name + '.pdf', CONFIG["override"]):
             return
         pdf_url = re.search(r'textOrigUrl:"(.*?)"', res).group(1)
-        res_print(file_name + '.pdf')
         CANDY.download_bin(pdf_url, WORK_DIR.file(file_name + '.pdf'))
 
     elif resource.type == 'Rich':
-        if WORK_DIR.exist(file_name + '.html'):
+        if not WORK_DIR.need_download(file_name + '.html', CONFIG["override"]):
             return
         text = re.search(r'htmlContent:"(.*)",id',
                          res.encode('utf_8').decode('unicode_escape'), re.S).group(1)
-        res_print(file_name + '.html')
         with open(WORK_DIR.file(file_name + '.html'), 'w', encoding='utf_8') as file:
             file.write(text)
 
@@ -188,10 +186,10 @@ def get_resource(term_id):
                         outline.write(file_name, counter, 2, sign='!')
 
                         WORK_DIR.change('Files')
-                        res_print(params['fileName'])
                         file_name = '%s %s' % (counter, file_name)
-                        CANDY.download_bin('https://www.icourse163.org/course/attachment.htm',
-                                           WORK_DIR.file(file_name), params=params, cookies={'STUDY_SESS': None})
+                        if WORK_DIR.need_download(file_name, CONFIG["override"]):
+                            CANDY.download_bin('https://www.icourse163.org/course/attachment.htm',
+                                            WORK_DIR.file(file_name), params=params, cookies={'STUDY_SESS': None})
             counter.reset()
 
     if video_list:

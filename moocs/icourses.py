@@ -43,23 +43,23 @@ def parse_res(js):
         counter_str = str(counter).zfill(length)
         title = lesson['title']
         url = lesson['fullLinkUrl']
-        res_print(title)
         outline.write_string('%s {%s}#' % (title, counter_str))
-        FILES['videos'].write_string(url)
         video = Video(counter_str, title, url)
         video_list.append(video)
-        VIDEOS.append((url, video.file_name+".mp4"))
 
     return video_list
 
 
 def parse_video(video):
-    """填写视频重命名信息"""
+    """将视频信息添加到相关列表中"""
 
-    FILES['renamer'].write(video.meta.split('/')[-1], video.file_name)
+    if WORK_DIR.need_download(video.file_name+".mp4", CONFIG["override"]):
+        FILES['videos'].write_string(video.meta)
+        FILES['renamer'].write(video.meta.split('/')[-1], video.file_name)
+        VIDEOS.append((video.meta, video.file_name+".mp4"))
 
 
-def start(url, config):
+def start(url, config, cookies=None):
     """调用接口函数"""
 
     global WORK_DIR

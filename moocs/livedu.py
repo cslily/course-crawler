@@ -64,23 +64,21 @@ def parse_resource(resource):
     file_name = resource.file_name
     if resource.type == 'Video':
         ext = '.mp4'
-        res_print(file_name + ext)
-        resource.ext = ext
-        FILES['renamer'].write(
-            re.search(r'(\w+\.mp4)', resource.meta).group(1), file_name, ext)
-        FILES['video'].write_string(resource.meta)
-        VIDEOS.append((resource.meta, file_name+ext))
+        if WORK_DIR.need_download(file_name+ext, CONFIG["override"]):
+            resource.ext = ext
+            FILES['renamer'].write(
+                re.search(r'(\w+\.mp4)', resource.meta).group(1), file_name, ext)
+            FILES['video'].write_string(resource.meta)
+            VIDEOS.append((resource.meta, file_name+ext))
 
     elif resource.type == 'Document':
-        if WORK_DIR.exist(file_name + '.pdf'):
+        if not WORK_DIR.need_download(file_name+".pdf", CONFIG["override"]):
             return
-        res_print(file_name + '.pdf')
         CANDY.download_bin(resource.meta, WORK_DIR.file(file_name + '.pdf'))
 
     elif resource.type == 'Rich':
-        if WORK_DIR.exist(file_name + '.html'):
+        if not WORK_DIR.need_download(file_name+".html", CONFIG["override"]):
             return
-        res_print(file_name + '.html')
         with open(WORK_DIR.file(file_name + '.html'), 'w', encoding='utf_8') as file:
             file.write(resource.meta)
 
