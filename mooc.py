@@ -7,6 +7,8 @@ import re
 import json
 import argparse
 
+from moocs.utils import aria2_download, segment_download
+
 
 def store_cookies(mooc_type, restore=False):
     """存储并返回 Cookie 字典"""
@@ -78,41 +80,45 @@ def main():
               'download_video': args.download_video, 'num_thread': int(args.num_thread)}
 
     if re.match(r'https?://www.icourse163.org/(spoc/)?(course|learn)/', args.url):
-        from moocs import icourse163
-        cookies = store_cookies('icourse163', restore=args.c)
-        icourse163.start(args.url, config, cookies)
+        from moocs import icourse163 as mooc
     elif re.match(r'https?://www.xuetangx.com/courses/.+/about', args.url):
-        from moocs import xuetangx
-        cookies = store_cookies('xuetangx', restore=args.c)
-        xuetangx.start(args.url, config, cookies)
+        from moocs import xuetangx as mooc
     elif re.match(r'https?://mooc.study.163.com/(course|learn)/', args.url):
-        from moocs import study_mooc
-        cookies = store_cookies('study_163_mooc', restore=args.c)
-        study_mooc.start(args.url, config, cookies)
+        from moocs import study_mooc as mooc
     elif re.match(r'https?://study.163.com/course/', args.url):
-        from moocs import study_163
-        study_163.start(args.url, config)
+        from moocs import study_163 as mooc
     elif re.match(r'https?://open.163.com/(special|movie)/', args.url):
-        from moocs import open_163
-        open_163.start(args.url, config)
+        from moocs import open_163 as mooc
     elif re.match(r'https?://www.cnmooc.org/portal/course/', args.url):
-        from moocs import cnmooc
-        cookies = store_cookies('cnmooc', restore=args.c)
-        cnmooc.start(args.url, config, cookies)
+        from moocs import cnmooc as mooc
     elif re.match(r'https?://www.icourses.cn/web/sword/portal/videoDetail', args.url):
-        from moocs import icourses
-        icourses.start(args.url, config)
+        from moocs import icourses as mooc
     elif re.match(r'https?://www.icourses.cn/sCourse/course_\d+.html', args.url) or \
             re.match(r'https?://www.icourses.cn/web/sword/portal/shareDetails\?cId=', args.url):
-        from moocs import icourses_share
-        icourses_share.start(args.url, config)
+        from moocs import icourses_share as mooc
     elif re.match(r'https?://www.livedu.com.cn/ispace4.0/moocxjkc/toKcView.do\?kcid=', args.url):
-        from moocs import livedu
-        cookies = store_cookies('livedu', restore=args.c)
-        livedu.start(args.url, config, cookies)
+        from moocs import livedu as mooc
     else:
         print('课程地址有误！')
         sys.exit(1)
+    
+    if mooc.need_cookies:
+        cookies = store_cookies(mooc.name, restore=args.c)
+    else:
+        cookies = None
+
+    mooc.start(args.url, config, cookies)
+
+    # 视频下载
+    if config['aria2'] or config['download_video']:
+        workdir = mooc.exports["workdir"]
+        workdir.change('Videos')
+        if config['aria2']:
+            aria2_download(config['aria2'], workdir.path,
+                           webui=config['aria2-webui'], session=config['aria2-session'])
+        elif config['download_video']:
+            spider, videos = mooc.exports["spider"], mooc.exports["videos"]
+            segment_download(videos, workdir.path, spider, num_thread=config["num_thread"])
 
 
 if __name__ == '__main__':

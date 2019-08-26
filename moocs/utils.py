@@ -346,12 +346,6 @@ def aria2_download(aria2_path, workdir, webui=None, session=None):
     print('aria2 已关闭~')
 
 
-def close_all_files(files):
-    """ 关闭所有文件对象 """
-    for file in list(files.keys()):
-        del files[file]
-
-
 def segment_download(videos, workdir, spider, num_thread=30, segment_size=10*1024*1024):
     """ 调用分段下载器进行下载 """
 

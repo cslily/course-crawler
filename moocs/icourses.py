@@ -7,10 +7,14 @@ import re
 import json
 from utils.crawler import Crawler
 
+name = "icourses"
+need_cookies = False
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
 VIDEOS = []
+exports = {}
+__all__ = ["name", "need_cookies", "start", "exports"]
 
 
 def get_content(url):
@@ -80,11 +84,8 @@ def start(url, config):
     else:
         parse_res_list(video_list, rename, parse_video)
 
-    if CONFIG['aria2'] or CONFIG['download_video']:
-        close_all_files(FILES)
-        WORK_DIR.change('Videos')
-        if CONFIG['aria2']:
-            aria2_download(CONFIG['aria2'], WORK_DIR.path,
-                           webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
-        elif CONFIG['download_video']:
-            segment_download(VIDEOS, CANDY, num_thread=CONFIG["num_thread"])
+    exports.update({
+        "workdir": WORK_DIR,
+        "spider": CANDY,
+        "videos": VIDEOS
+    })

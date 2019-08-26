@@ -7,10 +7,14 @@ import time
 from moocs.utils import *
 from utils.crawler import Crawler
 
+name = "icourse163"
+need_cookies = True
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
 VIDEOS = []
+exports = {}
+__all__ = ["name", "need_cookies", "start", "exports"]
 
 
 def get_summary(url):
@@ -225,12 +229,8 @@ def start(url, config, cookies):
 
     get_resource(term_id)
 
-    if CONFIG['aria2'] or CONFIG['download_video']:
-        close_all_files(FILES)
-        WORK_DIR.change('Videos')
-        if CONFIG['aria2']:
-            aria2_download(CONFIG['aria2'], WORK_DIR.path,
-                           webui=CONFIG['aria2-webui'], session=CONFIG['aria2-session'])
-        elif CONFIG['download_video']:
-            segment_download(VIDEOS, WORK_DIR.path, CANDY,
-                             num_thread=CONFIG["num_thread"])
+    exports.update({
+        "workdir": WORK_DIR,
+        "spider": CANDY,
+        "videos": VIDEOS
+    })
