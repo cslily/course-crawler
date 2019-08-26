@@ -195,8 +195,8 @@ def get_resource(term_id):
     if video_list:
         rename = WORK_DIR.file('Names.txt') if CONFIG['rename'] else False
         WORK_DIR.change('Videos')
-        if CONFIG['dpl']:
-            playlist = Playlist()
+        playlist = get_playlist(CONFIG["playlist_type"], CONFIG["playlist_path_type"])
+        if playlist:
             parse_res_list(video_list, rename, playlist.write, parse_resource)
         else:
             parse_res_list(video_list, rename, parse_resource)

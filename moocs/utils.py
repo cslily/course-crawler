@@ -135,27 +135,56 @@ class ClassicFile(object):
 
 
 class Playlist(ClassicFile):
-    """PotPlayer 播放列表类
+    """ 播放列表类 """
+
+    def __init__(self, file, path_type):
+        super().__init__(file)
+        self.path_type = path_type
+
+    def switch_path(self, path):
+        """ 根据路径类别生成路径项 """
+        path = os.path.normpath(path)
+        if self.path_type == 'AP':
+            path = os.path.abspath(path)
+        elif self.path_type == 'RP':
+            path = os.path.relpath(path, start=os.path.dirname(self.file))
+        return path
+
+    def write(self, video):
+        """传入一个 Video 类的对象，将该对象的信息写入播放列表"""
+
+        path = os.path.join("Videos", video.file_name + video.ext)
+        path = self.switch_path(path)
+        self.write_string(path)
+
+
+class M3u(Playlist):
+    """ m3u 播放列表类 """
+
+    def __init__(self, path_type='RP'):
+        super().__init__('Playlist.m3u', path_type)
+
+
+class Dpl(Playlist):
+    """ Potplayer 播放列表类 
 
     属性
         _count：已经写入的播放列表的文件数；
     """
 
-    def __init__(self):
-        """写入 PotPlayer 播放列表文件头部"""
-
-        super().__init__('Playlist.dpl')
-        self._count = 0
+    def __init__(self, path_type='RP'):
+        super().__init__('Playlist.dpl', path_type)
         self.write_string('DAUMPLAYLIST\n')
+        self._count = 0
 
     def write(self, video):
         """传入一个 Video 类的对象，将该对象的信息写入播放列表"""
 
         self._count += 1
-        self.write_string('%d*file*Videos\\%s%s' %
-                          (self._count, video.file_name, video.ext))
-        self.write_string('%d*title*%s %s\n' % (self._count,
-                                                '.'.join(video.id.split('.')[:-1]), video.name))
+        path = os.path.join("Videos", video.file_name + video.ext)
+        path = self.switch_path(path)
+        self.write_string('{}*file*{}'.format(self._count, path))
+        self.write_string('{}*title*{} {}\n'.format(self._count, '.'.join(video.id.split('.')[:-1]), video.name))
 
 
 class Renamer(ClassicFile):
@@ -324,6 +353,18 @@ def parse_res_list(res_list, file, *operator):
     else:
         for res in res_list:
             res.operation(*operator)
+
+
+def get_playlist(playlist_type, path_type):
+    """传入播放列表类型及路径类型，返回播放列表对象"""
+
+    if playlist_type == 'no':
+        playlist = None
+    elif playlist_type == 'dpl':
+        playlist = Dpl(path_type=path_type)
+    elif playlist_type == 'm3u':
+        playlist = M3u(path_type=path_type)
+    return playlist
 
 
 def aria2_download(aria2_path, workdir, webui=None, session=None):

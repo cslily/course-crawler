@@ -130,7 +130,6 @@ def start(url, config, cookies=None):
 
     global WORK_DIR
     CONFIG.update(config)
-    CONFIG['dpl'] = config['dpl'] and SYS == 'Windows'
 
     CANDY.set_cookies(cookies)
 
@@ -140,8 +139,6 @@ def start(url, config, cookies=None):
 
     FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['videos'] = ClassicFile(WORK_DIR.file('Videos.txt'))
-    if CONFIG['dpl']:
-        FILES['playlist'] = Playlist()
 
     course = 'https://www.cnmooc.org/portal/session/unitNavigation/'
     course_nav = course + url.split('/')[-1]
@@ -149,9 +146,9 @@ def start(url, config, cookies=None):
 
     rename = WORK_DIR.file('Names.txt') if CONFIG['rename'] else False
 
-    if CONFIG['dpl']:
-        parse_res_list(resource[0], rename,
-                       FILES['playlist'].write, parse_resource)
+    playlist = get_playlist(CONFIG["playlist_type"], CONFIG["playlist_path_type"])
+    if playlist:
+        parse_res_list(resource[0], rename, playlist.write, parse_resource)
     else:
         parse_res_list(resource[0], rename, parse_resource)
 

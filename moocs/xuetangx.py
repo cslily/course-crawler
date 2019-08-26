@@ -147,8 +147,8 @@ def get_content(url):
     if video_list:
         WORK_DIR.change('Videos')
         rename = WORK_DIR.file('Names.txt') if CONFIG['rename'] else False
-        if CONFIG['dpl']:
-            playlist = Playlist()
+        playlist = get_playlist(CONFIG["playlist_type"], CONFIG["playlist_path_type"])
+        if playlist:
             parse_res_list(video_list, rename, playlist.write, get_video)
         else:
             parse_res_list(video_list, rename, get_video)

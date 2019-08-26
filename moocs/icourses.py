@@ -71,14 +71,15 @@ def start(url, config, cookies=None):
     WORK_DIR.change('Videos')
     FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['videos'] = ClassicFile(WORK_DIR.file('Videos.txt'))
-    if CONFIG['dpl']:
-        FILES['playlist'] = Playlist()
+    playlist = get_playlist(CONFIG["playlist_type"], CONFIG["playlist_path_type"])
+    if playlist:
+        FILES['playlist'] = playlist
 
     video_list = parse_res(course_info[1])
 
     rename = WORK_DIR.file('Names.txt') if CONFIG['rename'] else False
 
-    if CONFIG['dpl']:
+    if playlist:
         parse_res_list(video_list, rename,
                        FILES['playlist'].write, parse_video)
     else:

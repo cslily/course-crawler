@@ -62,7 +62,10 @@ def main():
     parser.add_argument('--no-sub', action='store_false', help='不下载字幕')
     parser.add_argument('--no-file', action='store_false', help='不下载附件')
     parser.add_argument('--no-text', action='store_false', help='不下载富文本')
-    parser.add_argument('--no-dpl', action='store_false', help='不生成播放列表')
+    parser.add_argument("--playlist-type", default="dpl",
+                        choices=["dpl", "m3u", "no"], help="播放列表类型，支持 dpl 和 m3u，输入 no 不生成播放列表")
+    parser.add_argument("--abs-path", action='store_true',
+                        help="播放列表路径使用绝对路径，默认为相对路径")
     parser.add_argument('--download-video',
                         action='store_true', help='使用分段下载器直接下载视频')
     parser.add_argument('--num-thread', default='30', help='分段下载器线程数')
@@ -75,10 +78,11 @@ def main():
 
     args = parser.parse_args()
     resolutions = ['shd', 'hd', 'sd']
+    playlist_path_type = 'AP' if args.abs_path else 'RP'
 
     config = {'doc': args.no_doc, 'sub': args.no_sub, 'file': args.no_file, 'text': args.no_text,
-              'dpl': args.no_dpl, 'rename': args.inter, 'dir': args.dir, 'resolution': resolutions.index(args.quality.lower()),
-              'override': args.override,
+              'rename': args.inter, 'dir': args.dir, 'resolution': resolutions.index(args.quality.lower()),
+              'override': args.override, 'playlist_type': args.playlist_type, 'playlist_path_type': playlist_path_type,
               'aria2': args.aria2, 'aria2-webui': args.aria2_webui, 'aria2-session': args.aria2_session,
               'download_video': args.download_video, 'num_thread': int(args.num_thread)}
 
