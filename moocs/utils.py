@@ -6,7 +6,7 @@ import platform
 import re
 import subprocess
 
-from utils.segment_dl import DownloadManager, ResourceDispenser
+from utils.segment_dl import FileManager
 
 SYS = platform.system()
 
@@ -359,10 +359,8 @@ def segment_download(videos, workdir, spider, num_thread=30, segment_size=10*102
     for url, file_name in videos:
         file_path = os.path.join(workdir, file_name)
         resources.append((url, file_path))
-    dispenser = ResourceDispenser(resources, num_thread, segment_size, spider)
-    dispenser.dispense(log=False)
-    dispenser.run()
-
-    manager = DownloadManager(dispenser.files)
+    manager = FileManager(num_thread, segment_size, spider=spider)
+    manager.dispense_resources(resources, log=False)
     manager.run()
+    manager.monitoring()
     print('视频已全部下载完成~')
