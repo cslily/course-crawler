@@ -68,7 +68,7 @@ def main():
                         help="播放列表路径使用绝对路径，默认为相对路径")
     parser.add_argument('--download-video',
                         action='store_true', help='使用分段下载器直接下载视频')
-    parser.add_argument('--num-thread', default='30', help='分段下载器线程数')
+    parser.add_argument('--num-thread', type=int, default=30, help='分段下载器线程数')
     parser.add_argument('--aria2', default=None,
                         help='aria2路径，配置后自动调用aria2下载视频')
     parser.add_argument('--aria2-webui', default=None,
@@ -84,7 +84,7 @@ def main():
               'rename': args.inter, 'dir': args.dir, 'resolution': resolutions.index(args.quality.lower()),
               'override': args.override, 'playlist_type': args.playlist_type, 'playlist_path_type': playlist_path_type,
               'aria2': args.aria2, 'aria2-webui': args.aria2_webui, 'aria2-session': args.aria2_session,
-              'download_video': args.download_video, 'num_thread': int(args.num_thread)}
+              'download_video': args.download_video, 'num_thread': args.num_thread}
 
     if re.match(r'https?://www.icourse163.org/(spoc/)?(course|learn)/', args.url):
         from moocs import icourse163 as mooc

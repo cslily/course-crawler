@@ -18,7 +18,7 @@
 - [学堂在线](http://www.xuetangx.com/)
 - [北京高校优质课程研究会](http://www.livedu.com.cn/)
 
-详细信息和用法请见 [https://mooc.xoy.io/](https://mooc.xoy.io/)。
+详细信息和用法请见 [https://www.sigure.xyz/course-crawler/](https://www.sigure.xyz/course-crawler/)。
 
 ### 声明
 

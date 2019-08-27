@@ -174,7 +174,13 @@ class Segment():
                 else:
                     f.write(res.content)
             # 从临时文件迁移，并删除临时文件
-            os.rename(self.tmp_path, self.path)
+            if os.path.exists(self.path):
+                with open(self.tmp_path, "rb") as fr:
+                    with open(self.path, "wb") as fw:
+                        fw.write(fr.read())
+                os.remove(self.path)
+            else:
+                os.rename(self.tmp_path, self.path)
         self.switch_status()
 
         # 检查是否所有片段均已下载完成，如果是则合并
@@ -270,11 +276,20 @@ class FileManager():
         files = self.files
         size, t = sum([file.size for file in files]), time.time()
         total_size = sum([file.total for file in files])
-        center_placeholder = "[center]"
+        center_placeholder = "%(center)s"
         while len(files):
             bar_length = 50
             max_length = 80
             log_string = " Downloading... ".center(max_length, "=") + "\n"
+
+            # 下载速度
+            now_size, now_t = sum([file.size for file in files]), time.time()
+            delta_size, delta_t = now_size - size, now_t - t
+            size, t = now_size, now_t
+            if delta_t < 1e-6:
+                delta_t = 1e-6
+            speed = delta_size / delta_t
+
             # 单个下载进度
             for file in files:
                 if file.downloading:
@@ -291,14 +306,6 @@ class FileManager():
                     line = line.replace(center_placeholder, max(
                         max_length-len(line)+len(center_placeholder), 0)*"-")
                     log_string += line + "\n"
-
-            # 下载速度
-            now_size, now_t = sum([file.size for file in files]), time.time()
-            delta_size, delta_t = now_size - size, now_t - t
-            size, t = now_size, now_t
-            if delta_t < 1e-6:
-                delta_t = 1e-6
-            speed = delta_size / delta_t
 
             # 下载进度
             if total_size != 0:
@@ -325,7 +332,7 @@ class FileManager():
                 break
 
             try:
-                time.sleep(0.5)
+                time.sleep(max(1-(time.time()-now_t), 0.01))
             except (SystemExit, KeyboardInterrupt):
                 raise
 
