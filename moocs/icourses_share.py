@@ -55,7 +55,7 @@ def parse_resource(resource):
                 url = video_urls[sp]
                 break
 
-        if WORK_DIR.need_download(file_name+".mp4", CONFIG["override"]):
+        if WORK_DIR.need_download(file_name+".mp4", CONFIG["overwrite"]):
             FILES['renamer'].write(
                 re.search(r'(\w+\.mp4)', url).group(1), file_name)
             FILES['video'].write_string(url)
@@ -68,7 +68,7 @@ def parse_resource(resource):
 
     elif resource.type == 'Document':
         pdf_url = resource.meta['fullResUrl']
-        if WORK_DIR.need_download(file_name+".pdf", CONFIG["override"]):
+        if WORK_DIR.need_download(file_name+".pdf", CONFIG["overwrite"]):
             CANDY.download_bin(pdf_url, WORK_DIR.file(file_name + '.pdf'))
 
 

@@ -31,7 +31,7 @@ def get_book(url):
         WORK_DIR.change('Books', str(shelf_count))
         for book_count, book in enumerate(soup.select('#booknav a'), 1):
             file_name = Resource.file_to_save(book.string) + '.pdf'
-            if WORK_DIR.need_download(file_name, CONFIG["override"]):
+            if WORK_DIR.need_download(file_name, CONFIG["overwrite"]):
                 CANDY.download_bin(
                     BASE_URL + book['rel'][0], WORK_DIR.file(file_name))
 
@@ -55,7 +55,7 @@ def get_video(video):
     """根据视频 ID 和文件名字获取视频信息"""
 
     file_name = video.file_name
-    if WORK_DIR.need_download(file_name+'.mp4', CONFIG["override"]):
+    if WORK_DIR.need_download(file_name+'.mp4', CONFIG["overwrite"]):
         res = CANDY.get('http://xuetangx.com/videoid2source/' + video.meta).text
         try:
             video_url = json.loads(res)['sources']['quality20'][0]

@@ -53,7 +53,7 @@ def parse_res(js):
 def parse_video(video):
     """将视频信息添加到相关列表中"""
 
-    if WORK_DIR.need_download(video.file_name+".mp4", CONFIG["override"]):
+    if WORK_DIR.need_download(video.file_name+".mp4", CONFIG["overwrite"]):
         FILES['videos'].write_string(video.meta)
         FILES['renamer'].write(video.meta.split('/')[-1], video.file_name)
         VIDEOS.append((video.meta, video.file_name+".mp4"))

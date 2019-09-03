@@ -7,42 +7,7 @@ import re
 import json
 import argparse
 
-from moocs.utils import aria2_download, segment_download
-
-
-def store_cookies(mooc_type, restore=False):
-    """存储并返回 Cookie 字典"""
-
-    def cookie_to_json():
-        """将分号分隔的 Cookie 转为字典"""
-
-        cookies_dict = {}
-        raw_cookies = input('> ')
-        if not raw_cookies:
-            return {}
-        if raw_cookies[:7].lower() == 'cookie:':
-            raw_cookies = raw_cookies[7:]
-
-        for cookie in raw_cookies.split(';'):
-            key, value = cookie.lstrip().split("=", 1)
-            cookies_dict[key] = value
-
-        return cookies_dict
-
-    file_path = os.path.join(sys.path[0], "cookies.json")
-    if not os.path.isfile(file_path):
-        cookies = {}
-    else:
-        with open(file_path, 'r') as cookies_file:
-            cookies = json.load(cookies_file)
-
-    if restore or not cookies.get(mooc_type):
-        print("输入 Cookie：")
-        cookies[mooc_type] = cookie_to_json()
-        with open(file_path, 'w') as f:
-            json.dump(cookies, f, indent=2)
-
-    return cookies[mooc_type]
+from moocs.utils import aria2_download, segment_download, store_cookies
 
 
 def main():
@@ -54,7 +19,7 @@ def main():
                         help='执行任务的时候重新输入 cookies')
     parser.add_argument('-d', '--dir', default=r'', help='下载目录')
     parser.add_argument('-r', '--quality', default='shd', help='视频清晰度')
-    parser.add_argument('-w', '--override',
+    parser.add_argument('-w', '--overwrite',
                         action='store_true', help='强制覆盖重新下载')
     parser.add_argument('--inter', action='store_true', help='交互式修改文件名')
     parser.add_argument('--no-doc', action='store_false',
@@ -82,7 +47,7 @@ def main():
 
     config = {'doc': args.no_doc, 'sub': args.no_sub, 'file': args.no_file, 'text': args.no_text,
               'rename': args.inter, 'dir': args.dir, 'resolution': resolutions.index(args.quality.lower()),
-              'override': args.override, 'playlist_type': args.playlist_type, 'playlist_path_type': playlist_path_type,
+              'overwrite': args.overwrite, 'playlist_type': args.playlist_type, 'playlist_path_type': playlist_path_type,
               'aria2': args.aria2, 'aria2-webui': args.aria2_webui, 'aria2-session': args.aria2_session,
               'download_video': args.download_video, 'num_thread': args.num_thread}
 
@@ -125,7 +90,7 @@ def main():
                            webui=config['aria2-webui'], session=config['aria2-session'])
         elif config['download_video']:
             spider, videos = mooc.exports["spider"], mooc.exports["videos"]
-            segment_download(videos, workdir.path, spider, override=config["override"],
+            segment_download(videos, workdir.path, spider, overwrite=config["overwrite"],
                              num_thread=config["num_thread"])
 
 

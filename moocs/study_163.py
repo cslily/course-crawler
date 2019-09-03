@@ -69,7 +69,7 @@ def parse_resource(resource):
             else:
                 continue
             break
-        if WORK_DIR.need_download(file_name + ext, CONFIG["override"]):
+        if WORK_DIR.need_download(file_name + ext, CONFIG["overwrite"]):
             FILES['renamer'].write(
                 re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
             FILES['video'].write_string(url)
@@ -81,7 +81,7 @@ def parse_resource(resource):
         # 暂未发现字幕 api应该在data['result']['srtCaptions']
 
     elif resource.type == 'Document':
-        if not WORK_DIR.need_download(file_name+".pdf", CONFIG["override"]):
+        if not WORK_DIR.need_download(file_name+".pdf", CONFIG["overwrite"]):
             return
         post_data = {
             'callCount': '1',
@@ -99,7 +99,7 @@ def parse_resource(resource):
         pdf_url = re.search(r'pdfUrl:"(http://.+?)",', res).group(1)
         CANDY.download_bin(pdf_url, WORK_DIR.file(file_name + '.pdf'))
     else:
-        if not WORK_DIR.need_download(file_name+resource.meta[2], CONFIG["override"]):
+        if not WORK_DIR.need_download(file_name+resource.meta[2], CONFIG["overwrite"]):
             return
         CANDY.download_bin(resource.meta[3], WORK_DIR.file(
             file_name + resource.meta[2]))

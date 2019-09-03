@@ -69,8 +69,8 @@ def parse_resource(resource):
             else:
                 continue
             break
-        
-        if WORK_DIR.need_download(file_name + ext, CONFIG["override"]):
+
+        if WORK_DIR.need_download(file_name + ext, CONFIG["overwrite"]):
             FILES['renamer'].write(
                 re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
             FILES['video'].write_string(url)
@@ -87,18 +87,18 @@ def parse_resource(resource):
                 subtitle_lang = subtitle[0].encode(
                     'utf_8').decode('unicode_escape')
                 sub_name = file_name + '_' + subtitle_lang + '.srt'
-            if not WORK_DIR.need_download(sub_name, CONFIG["override"]):
+            if not WORK_DIR.need_download(sub_name, CONFIG["overwrite"]):
                 continue
             CANDY.download_bin(subtitle[1], WORK_DIR.file(sub_name))
 
     elif resource.type == 'Document':
-        if not WORK_DIR.need_download(file_name + '.pdf', CONFIG["override"]):
+        if not WORK_DIR.need_download(file_name + '.pdf', CONFIG["overwrite"]):
             return
         pdf_url = re.search(r'textOrigUrl:"(.*?)"', res).group(1)
         CANDY.download_bin(pdf_url, WORK_DIR.file(file_name + '.pdf'))
 
     elif resource.type == 'Rich':
-        if not WORK_DIR.need_download(file_name + '.html', CONFIG["override"]):
+        if not WORK_DIR.need_download(file_name + '.html', CONFIG["overwrite"]):
             return
         text = re.search(r'htmlContent:"(.*)",id',
                          res.encode('utf_8').decode('unicode_escape'), re.S).group(1)
@@ -166,7 +166,7 @@ def get_resource(term_id):
 
                         WORK_DIR.change('Files')
                         file_name = '%s %s' % (counter, file_name)
-                        if WORK_DIR.need_download(file_name, CONFIG["override"]):
+                        if WORK_DIR.need_download(file_name, CONFIG["overwrite"]):
                             CANDY.download_bin('https://www.icourse163.org/course/attachment.htm',
                                             WORK_DIR.file(file_name), params=params)
             counter.reset()

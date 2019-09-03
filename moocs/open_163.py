@@ -114,7 +114,7 @@ def parse_resource(resource):
                     resource.ext = ext
                     break
 
-    if WORK_DIR.need_download(file_name+ext, CONFIG["override"]):
+    if WORK_DIR.need_download(file_name+ext, CONFIG["overwrite"]):
         FILES['renamer'].write(re.search(r'(\w+\%s)' %
                                         ext, video_url).group(1), file_name, ext)
         FILES['video'].write_string(video_url)
@@ -127,7 +127,7 @@ def parse_resource(resource):
             sub_name = file_name + '.srt'
         else:
             sub_name = file_name + '_' + subtitle_lang + '.srt'
-        if WORK_DIR.need_download(sub_name, CONFIG["override"]):
+        if WORK_DIR.need_download(sub_name, CONFIG["overwrite"]):
             CANDY.download_bin(subtitle_url, WORK_DIR.file(sub_name))
 
 

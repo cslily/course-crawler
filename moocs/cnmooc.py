@@ -91,18 +91,18 @@ def parse_resource(video):
 
     res = CANDY.post('https://www.cnmooc.org/item/detail.mooc',
                     data={'nodeId': node_id, 'itemId': video.meta}).json()
-    if WORK_DIR.need_download(video.file_name+".mp4", CONFIG["override"]):
+    if WORK_DIR.need_download(video.file_name+".mp4", CONFIG["overwrite"]):
         url = res['node']['flvUrl']
         FILES['videos'].write_string(url)
         FILES['renamer'].write(url.split('/')[-1], video.file_name)
         VIDEOS.append((url, video.file_name+".mp4"))
-    
+
     if CONFIG['sub']:
         exts = res['node']['nodeExts']
         for ext in exts:
             file_name = '%s%s.srt' % (video.file_name, '' if len(
                 exts) == 1 else '_' + ext['languageCode'])
-            if WORK_DIR.need_download(file_name, CONFIG["override"]):
+            if WORK_DIR.need_download(file_name, CONFIG["overwrite"]):
                 CANDY.download_bin('https://static.cnmooc.org' +
                                 ext['node']['rsUrl'], WORK_DIR.file(file_name))
 
@@ -121,7 +121,7 @@ def get_doc(doc_list):
             continue
         ext = url.split('.')[-1]
         file_name = WORK_DIR.file(doc.file_name + '.' + ext)
-        if WORK_DIR.need_download(file_name, CONFIG["override"]):
+        if WORK_DIR.need_download(file_name, CONFIG["overwrite"]):
             CANDY.download_bin('https://static.cnmooc.org' + url, file_name)
 
 

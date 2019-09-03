@@ -166,7 +166,7 @@ class M3u(Playlist):
 
 
 class Dpl(Playlist):
-    """ Potplayer 播放列表类 
+    """ Potplayer 播放列表类
 
     属性
         _count：已经写入的播放列表的文件数；
@@ -184,7 +184,8 @@ class Dpl(Playlist):
         path = os.path.join("Videos", video.file_name + video.ext)
         path = self.switch_path(path)
         self.write_string('{}*file*{}'.format(self._count, path))
-        self.write_string('{}*title*{} {}\n'.format(self._count, '.'.join(video.id.split('.')[:-1]), video.name))
+        self.write_string('{}*title*{} {}\n'.format(self._count,
+                                                    '.'.join(video.id.split('.')[:-1]), video.name))
 
 
 class Renamer(ClassicFile):
@@ -273,10 +274,10 @@ class WorkingDir(object):
 
         return os.path.exists(os.path.join(self.path, file_name))
 
-    def need_download(self, file_name, override=False):
+    def need_download(self, file_name, overwrite=False):
         """判断当前文件是否需要下载，并且打印输出"""
-        
-        need = override or not self.exist(file_name)
+
+        need = overwrite or not self.exist(file_name)
         sign = ">" if need else "!"
         res_print(file_name, sign=sign)
         return need
@@ -289,16 +290,16 @@ class Counter(object):
         counter：计数器的列表。
     """
 
-    def __init__(self, level_num=3):
+    def __init__(self, num_level=3):
         """初始化一个列表"""
 
-        self.counter = [0] * level_num
-        self.level_num = level_num
+        self.counter = [0] * num_level
+        self.num_level = num_level
 
     def add(self, level):
         """给第 level 级别的计数器 +1"""
 
-        for i in range(level + 1, self.level_num):
+        for i in range(level + 1, self.num_level):
             self.counter[i] = 0
         self.counter[level] += 1
 
@@ -355,6 +356,41 @@ def parse_res_list(res_list, file, *operator):
             res.operation(*operator)
 
 
+def store_cookies(mooc_type, restore=False):
+    """存储并返回 Cookie 字典"""
+
+    def cookie_to_json():
+        """将分号分隔的 Cookie 转为字典"""
+
+        cookies_dict = {}
+        raw_cookies = input('> ')
+        if not raw_cookies:
+            return {}
+        if raw_cookies[:7].lower() == 'cookie:':
+            raw_cookies = raw_cookies[7:]
+
+        for cookie in raw_cookies.split(';'):
+            key, value = cookie.lstrip().split("=", 1)
+            cookies_dict[key] = value
+
+        return cookies_dict
+
+    file_path = os.path.join(sys.path[0], "cookies.json")
+    if not os.path.isfile(file_path):
+        cookies = {}
+    else:
+        with open(file_path, 'r') as cookies_file:
+            cookies = json.load(cookies_file)
+
+    if restore or not cookies.get(mooc_type):
+        print("输入 Cookie：")
+        cookies[mooc_type] = cookie_to_json()
+        with open(file_path, 'w') as f:
+            json.dump(cookies, f, indent=2)
+
+    return cookies[mooc_type]
+
+
 def get_playlist(playlist_type, path_type):
     """传入播放列表类型及路径类型，返回播放列表对象"""
 
@@ -395,14 +431,15 @@ def aria2_download(aria2_path, workdir, webui=None, session=None):
     print('aria2 已关闭~')
 
 
-def segment_download(videos, workdir, spider, override=False, num_thread=30, segment_size=10*1024*1024):
+def segment_download(videos, workdir, spider, overwrite=False, num_thread=30, segment_size=10*1024*1024):
     """ 调用分段下载器进行下载 """
 
     resources = []
     for url, file_name in videos:
         file_path = os.path.join(workdir, file_name)
         resources.append((url, file_path))
-    manager = FileManager(num_thread, segment_size, spider=spider, override=override)
+    manager = FileManager(num_thread, segment_size,
+                          spider=spider, overwrite=overwrite)
     manager.dispense_resources(resources, log=False)
     manager.run()
     manager.monitoring()
