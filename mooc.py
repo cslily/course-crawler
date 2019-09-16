@@ -4,7 +4,6 @@
 import os
 import sys
 import re
-import json
 import argparse
 
 from moocs.utils import aria2_download, segment_download, store_cookies
