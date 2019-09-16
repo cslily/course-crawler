@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 """核心程序组件"""
 
+import json
 import os
 import platform
 import re
 import subprocess
 import sys
-import json
+import time
 
-from utils.segment_dl import FileManager
+from utils.aria2 import Aria2
+from utils.common import size_format
 
 SYS = platform.system()
 
@@ -405,44 +407,41 @@ def get_playlist(playlist_type, path_type):
     return playlist
 
 
-def aria2_download(aria2_path, workdir, webui=None, session=None):
+def aria2_download(aria2_path, videos, workdir):
     """传入 aria2 和其 webui 、 session 的路径信息，调用 aria2 下载视频"""
 
-    input_file = os.path.join(workdir, 'Videos.txt')
+    aria2 = Aria2(aria2_path=aria2_path)
 
-    if webui:
-        import webbrowser
-        if not webbrowser.open(webui):
-            print('自动打开 aria2-webui 失败，请手动打开...')
+    for url, file_name in videos:
+        aria2.add_uri([url], {"dir": workdir, "out": file_name+".t"})
 
-    cmd = '"%s"' \
-          ' --enable-rpc' \
-          ' --rpc-listen-port 6800' \
-          ' --continue' \
-          ' --dir="%s"'\
-          ' --input-file="%s"'\
-          ' --max-concurrent-downloads=20' \
-          ' --max-connection-per-server=10' \
-          ' --rpc-max-request-size=1024M' % (aria2_path, workdir, input_file)
-
-    if session:
-        cmd += ' --save-session=%s' \
-               ' --save-session-interval=60' % session
+    while True:
+        # 显示进度
+        stat = aria2.get_global_stat()
+        speed, num_active, num_stopped = int(stat["downloadSpeed"]), int(
+            stat["numActive"]), int(stat["numStopped"])
+        process_bar_length = 50
+        len_done = process_bar_length * \
+            num_stopped // (num_active + num_stopped)
+        len_undone = process_bar_length - len_done
+        log_string = '{}{} {:12}'.format(
+            "#" * len_done, "_" * len_undone, size_format(speed)+"/s")
+        print(log_string, end="\r")
+        time.sleep(1)
+        if num_active == 0:
+            break
     print('正在使用 aria2 下载视频，请不要在下载过程中关闭此窗口~')
     subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
-    print('aria2 已关闭~')
 
-
-def segment_download(videos, workdir, spider, overwrite=False, num_thread=30, segment_size=10*1024*1024):
-    """ 调用分段下载器进行下载 """
-
-    resources = []
-    for url, file_name in videos:
+    # 重命名文件
+    for _, file_name in videos:
         file_path = os.path.join(workdir, file_name)
-        resources.append((url, file_path))
-    manager = FileManager(num_thread, segment_size,
-                          spider=spider, overwrite=overwrite)
-    manager.dispense_resources(resources, log=False)
-    manager.run()
-    manager.monitoring()
-    print('视频已全部下载完成~')
+        tmp_path = file_path + ".t"
+        if os.path.exists(file_path):
+            with open(tmp_path, "rb") as fr:
+                with open(file_path, "wb") as fw:
+                    fw.write(fr.read())
+            os.remove(file_path)
+        else:
+            os.rename(tmp_path, file_path)
+    print("视频已下载全部完成~")

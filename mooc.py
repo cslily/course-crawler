@@ -6,7 +6,7 @@ import sys
 import re
 import argparse
 
-from moocs.utils import aria2_download, segment_download, store_cookies
+from moocs.utils import aria2_download, store_cookies
 
 
 def main():
@@ -30,15 +30,8 @@ def main():
                         choices=["dpl", "m3u", "no"], help="播放列表类型，支持 dpl 和 m3u，输入 no 不生成播放列表")
     parser.add_argument("--abs-path", action='store_true',
                         help="播放列表路径使用绝对路径，默认为相对路径")
-    parser.add_argument('--download-video',
-                        action='store_true', help='使用分段下载器直接下载视频')
-    parser.add_argument('--num-thread', type=int, default=30, help='分段下载器线程数')
     parser.add_argument('--aria2', default=None,
                         help='aria2路径，配置后自动调用aria2下载视频')
-    parser.add_argument('--aria2-webui', default=None,
-                        help='aria2-webui路径，配置后自动开启webui')
-    parser.add_argument('--aria2-session', default=None,
-                        help='aria2-session路径，配置后将未完成任务保存至session中')
 
     args = parser.parse_args()
     resolutions = ['shd', 'hd', 'sd']
@@ -47,8 +40,7 @@ def main():
     config = {'doc': args.no_doc, 'sub': args.no_sub, 'file': args.no_file, 'text': args.no_text,
               'rename': args.inter, 'dir': args.dir, 'resolution': resolutions.index(args.quality.lower()),
               'overwrite': args.overwrite, 'playlist_type': args.playlist_type, 'playlist_path_type': playlist_path_type,
-              'aria2': args.aria2, 'aria2-webui': args.aria2_webui, 'aria2-session': args.aria2_session,
-              'download_video': args.download_video, 'num_thread': args.num_thread}
+              'aria2': args.aria2}
 
     if re.match(r'https?://www.icourse163.org/(spoc/)?(course|learn)/', args.url):
         from moocs import icourse163 as mooc
@@ -81,16 +73,11 @@ def main():
     mooc.start(args.url, config, cookies)
 
     # 视频下载
-    if config['aria2'] or config['download_video']:
+    if config['aria2']:
         workdir = mooc.exports["workdir"]
         workdir.change('Videos')
-        if config['aria2']:
-            aria2_download(config['aria2'], workdir.path,
-                           webui=config['aria2-webui'], session=config['aria2-session'])
-        elif config['download_video']:
-            spider, videos = mooc.exports["spider"], mooc.exports["videos"]
-            segment_download(videos, workdir.path, spider, overwrite=config["overwrite"],
-                             num_thread=config["num_thread"])
+        videos = mooc.exports["videos"]
+        aria2_download(config['aria2'], videos, workdir.path)
 
 
 if __name__ == '__main__':
