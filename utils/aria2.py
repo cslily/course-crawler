@@ -10,6 +10,10 @@ rpc_url = "http://localhost:{port}/jsonrpc"
 
 
 class Aria2():
+    """ Aria2 RPC 接口调用器
+    完整接口见（简单包装即可）：
+    http://aria2.github.io/manual/en/html/aria2c.html#rpc-interface
+    """
 
     def __init__(self, aria2_path="aria2c", port=6800):
         self.port = port
@@ -19,14 +23,15 @@ class Aria2():
         assert self.is_installed(), "请配置正确的 aria2 路径"
         if not self.is_connected():
             self.process = self.init_rpc()
+            # 防止操作过快导致 aria2 没来得及开启
+            time.sleep(1)
 
     def __del__(self):
         """ 析构时确保 aria2 关闭 """
         if self.is_connected():
             self.shutdown()
         self.process_file.close()
-        self.process.terminate()
-        # os.remove(self.process_file.name)
+        os.remove(self.process_file.name)
 
     def rpc_api(method):
         """ RPC 装饰器 """

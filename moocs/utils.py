@@ -407,10 +407,10 @@ def get_playlist(playlist_type, path_type):
     return playlist
 
 
-def aria2_download(aria2_path, videos, workdir):
+def aria2_download(videos, workdir):
     """传入 aria2 和其 webui 、 session 的路径信息，调用 aria2 下载视频"""
 
-    aria2 = Aria2(aria2_path=aria2_path)
+    aria2 = Aria2()
 
     for url, file_name in videos:
         aria2.add_uri([url], {"dir": workdir, "out": file_name+".t"})
@@ -430,8 +430,6 @@ def aria2_download(aria2_path, videos, workdir):
         time.sleep(1)
         if num_active == 0:
             break
-    print('正在使用 aria2 下载视频，请不要在下载过程中关闭此窗口~')
-    subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
 
     # 重命名文件
     for _, file_name in videos:
@@ -441,7 +439,7 @@ def aria2_download(aria2_path, videos, workdir):
             with open(tmp_path, "rb") as fr:
                 with open(file_path, "wb") as fw:
                     fw.write(fr.read())
-            os.remove(file_path)
+            os.remove(tmp_path)
         else:
             os.rename(tmp_path, file_path)
     print("视频已下载全部完成~")

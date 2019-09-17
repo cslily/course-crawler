@@ -30,8 +30,7 @@ def main():
                         choices=["dpl", "m3u", "no"], help="播放列表类型，支持 dpl 和 m3u，输入 no 不生成播放列表")
     parser.add_argument("--abs-path", action='store_true',
                         help="播放列表路径使用绝对路径，默认为相对路径")
-    parser.add_argument('--aria2', default=None,
-                        help='aria2路径，配置后自动调用aria2下载视频')
+    parser.add_argument('--aria2', action='store_true', help='自动调用aria2下载视频')
 
     args = parser.parse_args()
     resolutions = ['shd', 'hd', 'sd']
@@ -77,7 +76,7 @@ def main():
         workdir = mooc.exports["workdir"]
         workdir.change('Videos')
         videos = mooc.exports["videos"]
-        aria2_download(config['aria2'], videos, workdir.path)
+        aria2_download(videos, workdir.path)
 
 
 if __name__ == '__main__':

@@ -135,9 +135,6 @@ draft/
 .vscode/
 .idea/
 
-# aria2
-aria2/
-
 # Others
 .ipynb_checkpoints
 .idea
