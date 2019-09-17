@@ -64,6 +64,11 @@ class Aria2():
         """ 关闭 aria2 """
         pass
 
+    @rpc_api(method="aria2.tellStatus")
+    def tell_status(self, gid, keys=None):
+        """ 获取某一下载资源的状态信息 """
+        pass
+
     def init_rpc(self):
         """ 启动 aria2 RPC """
         cmd = self.aria2_path + \
@@ -91,3 +96,55 @@ class Aria2():
                                   stderr=subprocess.PIPE).returncode == 1
         except FileNotFoundError:
             return False
+
+
+class Aria2File():
+
+    def __init__(self, aria2, url, file_name, dir, overwrite=False):
+        self.aria2 = aria2
+        self.path = os.path.join(dir, file_name)
+        self.tmp_path = self.path + ".t"
+        self.aria2_file = self.tmp_path + ".aria2"
+        if overwrite and os.path.exists(self.tmp_path):
+            os.remove(self.tmp_path)
+        if overwrite and os.path.exists(self.aria2_file):
+            os.remove(self.aria2_file)
+        self.gid = aria2.add_uri([url], {"dir": dir, "out": file_name+".t"})
+
+    def get_length(self):
+        """ 获取总大小 """
+        length = int(self.aria2.tell_status(self.gid)["totalLength"])
+        cnt = 0
+        while length == 0:
+            time.sleep(0.1)
+            length = int(self.aria2.tell_status(self.gid)["totalLength"])
+            if cnt == 5:
+                break
+        return length
+
+    def get_complete_length(self):
+        """ 获取已完成部分大小 """
+        return int(self.aria2.tell_status(self.gid)["completedLength"])
+
+    def get_status(self):
+        """ 获取状态 """
+        return self.aria2.tell_status(self.gid)["status"]
+
+    def get_speed(self):
+        """ 获取下载速度 """
+        return int(self.aria2.tell_status(self.gid)["downloadSpeed"])
+
+    def exists(self):
+        """ 文件是否已存在 """
+        return os.path.exists(self.path)
+
+    def rename(self):
+        """ 将文件从临时位置移动到目标位置 """
+        if os.path.exists(self.path):
+            with open(self.tmp_path, "rb") as fr:
+                with open(self.path, "wb") as fw:
+                    fw.write(fr.read())
+            os.remove(self.tmp_path)
+        else:
+            os.rename(self.tmp_path, self.path)
+

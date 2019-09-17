@@ -9,7 +9,7 @@ import subprocess
 import sys
 import time
 
-from utils.aria2 import Aria2
+from utils.aria2 import Aria2, Aria2File
 from utils.common import size_format
 
 SYS = platform.system()
@@ -407,39 +407,37 @@ def get_playlist(playlist_type, path_type):
     return playlist
 
 
-def aria2_download(videos, workdir):
-    """传入 aria2 和其 webui 、 session 的路径信息，调用 aria2 下载视频"""
+def aria2_download(videos, workdir, overwrite=False):
+    """调用 aria2 下载视频"""
 
     aria2 = Aria2()
+    files = []
 
     for url, file_name in videos:
-        aria2.add_uri([url], {"dir": workdir, "out": file_name+".t"})
+        file = Aria2File(aria2, url, file_name, workdir, overwrite=overwrite)
+        files.append(file)
 
+    # 显示进度
+    process_bar_length = 50
+    total_length = sum([file.get_length() for file in files])
     while True:
-        # 显示进度
-        stat = aria2.get_global_stat()
-        speed, num_active, num_stopped = int(stat["downloadSpeed"]), int(
-            stat["numActive"]), int(stat["numStopped"])
-        process_bar_length = 50
+        speed = sum([file.get_speed() for file in files])
+        completed_length = sum([file.get_complete_length() for file in files])
         len_done = process_bar_length * \
-            num_stopped // (num_active + num_stopped)
+            completed_length // total_length
         len_undone = process_bar_length - len_done
-        log_string = '{}{} {:12}'.format(
-            "#" * len_done, "_" * len_undone, size_format(speed)+"/s")
+        log_string = '{}{} {}/{} {:12}'.format(
+            "#" * len_done, "_" * len_undone, size_format(completed_length),
+            size_format(total_length), size_format(speed)+"/s")
         print(log_string, end="\r")
+
+        # 重命名文件
+        for file in files:
+            if file.get_status() == "complete" and not file.exists():
+                file.rename()
+
         time.sleep(1)
-        if num_active == 0:
+        if all([file.get_status() == "complete" for file in files]):
             break
 
-    # 重命名文件
-    for _, file_name in videos:
-        file_path = os.path.join(workdir, file_name)
-        tmp_path = file_path + ".t"
-        if os.path.exists(file_path):
-            with open(tmp_path, "rb") as fr:
-                with open(file_path, "wb") as fw:
-                    fw.write(fr.read())
-            os.remove(tmp_path)
-        else:
-            os.rename(tmp_path, file_path)
     print("视频已下载全部完成~")

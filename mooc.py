@@ -76,7 +76,7 @@ def main():
         workdir = mooc.exports["workdir"]
         workdir.change('Videos')
         videos = mooc.exports["videos"]
-        aria2_download(videos, workdir.path)
+        aria2_download(videos, workdir.path, overwrite=config["overwrite"])
 
 
 if __name__ == '__main__':
