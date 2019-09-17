@@ -11,7 +11,7 @@ rpc_url = "http://localhost:{port}/jsonrpc"
 
 class Aria2():
     """ Aria2 RPC 接口调用器
-    完整接口见（简单包装即可）：
+    完整接口见（简单封装即可）：
     http://aria2.github.io/manual/en/html/aria2c.html#rpc-interface
     """
 
@@ -31,7 +31,10 @@ class Aria2():
         if self.is_connected():
             self.shutdown()
         self.process_file.close()
-        os.remove(self.process_file.name)
+        try:
+            os.remove(self.process_file.name)
+        except:
+            print("process.out 自动删除失败……")
 
     def rpc_api(method):
         """ RPC 装饰器 """
