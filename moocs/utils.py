@@ -10,7 +10,6 @@ import sys
 import time
 
 from utils.aria2 import Aria2, Aria2File
-from utils.common import size_format
 
 SYS = platform.system()
 
@@ -395,6 +394,23 @@ def store_cookies(mooc_type, restore=False):
     return cookies[mooc_type]
 
 
+def size_format(size, ndigits=2):
+    """ 输入数据字节数，与保留小数位数，返回数据量字符串 """
+    flag = '-' if size < 0 else ''
+    size = abs(size)
+    units = ["Bytes", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB", "BB"]
+    idx = len(units) - 1
+    unit = ""
+    unit_size = 0
+    while idx >= 0:
+        unit_size = 2 ** (idx * 10)
+        if size >= unit_size:
+            unit = units[idx]
+            break
+        idx -= 1
+    return "{}{:.{}f} {}".format(flag, size/unit_size, ndigits, unit)
+
+
 def get_playlist(playlist_type, path_type):
     """传入播放列表类型及路径类型，返回播放列表对象"""
 
@@ -420,23 +436,32 @@ def aria2_download(videos, workdir, overwrite=False):
     # 显示进度
     process_bar_length = 50
     total_length = sum([file.get_length() for file in files])
+    length_flag = False
     while True:
+        if not length_flag:
+            length_flag = True
+            total_length = 0
+            for file in files:
+                length = file.get_length()
+                if length == 0:
+                    length_flag = False
+                total_length += length
+
         speed = sum([file.get_speed() for file in files])
         completed_length = sum([file.get_complete_length() for file in files])
-        len_done = process_bar_length * \
-            completed_length // total_length
+        len_done = (process_bar_length * completed_length // \
+                    total_length) if total_length else process_bar_length
         len_undone = process_bar_length - len_done
         log_string = '{}{} {}/{} {:12}'.format(
             "#" * len_done, "_" * len_undone, size_format(completed_length),
             size_format(total_length), size_format(speed)+"/s")
         print(log_string, end="\r")
+        time.sleep(1)
 
         # 重命名文件
         for file in files:
-            if file.get_status() == "complete" and not file.exists():
+            if file.get_status() == "complete" and not file.renamed:
                 file.rename()
-
-        time.sleep(1)
         if all([file.get_status() == "complete" for file in files]):
             break
 

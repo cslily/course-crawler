@@ -108,22 +108,17 @@ class Aria2File():
         self.path = os.path.join(dir, file_name)
         self.tmp_path = self.path + ".t"
         self.aria2_file = self.tmp_path + ".aria2"
-        if overwrite and os.path.exists(self.tmp_path):
-            os.remove(self.tmp_path)
-        if overwrite and os.path.exists(self.aria2_file):
-            os.remove(self.aria2_file)
+        if overwrite:
+            if os.path.exists(self.tmp_path):
+                os.remove(self.tmp_path)
+            if os.path.exists(self.aria2_file):
+                os.remove(self.aria2_file)
         self.gid = aria2.add_uri([url], {"dir": dir, "out": file_name+".t"})
+        self.renamed = False
 
     def get_length(self):
         """ 获取总大小 """
-        length = int(self.aria2.tell_status(self.gid)["totalLength"])
-        cnt = 0
-        while length == 0:
-            time.sleep(0.1)
-            length = int(self.aria2.tell_status(self.gid)["totalLength"])
-            if cnt == 5:
-                break
-        return length
+        return int(self.aria2.tell_status(self.gid)["totalLength"])
 
     def get_complete_length(self):
         """ 获取已完成部分大小 """
@@ -144,10 +139,6 @@ class Aria2File():
     def rename(self):
         """ 将文件从临时位置移动到目标位置 """
         if os.path.exists(self.path):
-            with open(self.tmp_path, "rb") as fr:
-                with open(self.path, "wb") as fw:
-                    fw.write(fr.read())
-            os.remove(self.tmp_path)
-        else:
-            os.rename(self.tmp_path, self.path)
-
+            os.remove(self.path)
+        os.rename(self.tmp_path, self.path)
+        self.renamed = True
