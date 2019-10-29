@@ -45,6 +45,8 @@ def main():
         from moocs import icourse163 as mooc
     elif re.match(r'https?://www.xuetangx.com/courses/.+/about', args.url):
         from moocs import xuetangx as mooc
+    elif re.match(r'https?://next.xuetangx.com/course/.+', args.url):
+        from moocs import xuetangx_next as mooc
     elif re.match(r'https?://mooc.study.163.com/(course|learn)/', args.url):
         from moocs import study_mooc as mooc
     elif re.match(r'https?://study.163.com/course/', args.url):
