@@ -120,9 +120,9 @@ def get_doc(doc_list):
         except AttributeError:
             continue
         ext = url.split('.')[-1]
-        file_name = WORK_DIR.file(doc.file_name + '.' + ext)
-        if WORK_DIR.need_download(file_name, CONFIG["overwrite"]):
-            CANDY.download_bin('https://static.cnmooc.org' + url, file_name)
+        file_name = doc.file_name
+        if WORK_DIR.need_download(file_name + '.' + ext, CONFIG["overwrite"]):
+            CANDY.download_bin('https://static.cnmooc.org' + url, WORK_DIR.file(file_name + '.' + ext))
 
 
 def start(url, config, cookies=None):
