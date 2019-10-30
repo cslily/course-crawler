@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
 """学堂在线"""
 
-import json
-import sys
-
-from bs4 import BeautifulSoup
-
 from moocs.utils import *
 from utils.crawler import Crawler
 
@@ -53,6 +48,7 @@ def parse_resource(resource):
             if sources.get('quality' + qa):
                 # 居然是个数组，暂时没发现多段的，希望以后也没有吧……
                 video_url = sources['quality' + qa][0]
+                break
 
         ext = '.mp4'
         if WORK_DIR.need_download(file_name + ext, CONFIG["overwrite"]):
@@ -73,7 +69,7 @@ def parse_resource(resource):
         subtitle = Subtitle(WORK_DIR.file(file_name + '.srt'))
         assert len(starts) == len(ends) == len(texts)
         for i in range(len(starts)):
-            subtitle.write(texts[i], starts[i], ends[i])
+            subtitle.write(texts[i], starts[i]/1000, ends[i]/1000)
 
     elif resource.type == 'Document':
         if not WORK_DIR.need_download(file_name + '.pdf', CONFIG["overwrite"]):
@@ -106,7 +102,7 @@ def get_resource(cid, sign):
             section_id, section_name, section_order = section['id'], section['name'], section['order']
             outline.write(section_name, counter, 1)
 
-            # 暂时忽略测验，以后可能支持（在 section 中作为叶子结点， type_id = 6）
+            # 暂时忽略讨论、测验，以后可能支持（在 section 中作为叶子结点， type_id = 4 6）
             for item in section.get('leaf_list', []):
                 counter.add(2)
                 item_id, item_name, item_order = item['id'], item['name'], item['order']
