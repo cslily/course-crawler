@@ -60,6 +60,7 @@ def parse_resource(resource):
             }).json()
 
             resolutions = [3, 2, 1]
+            url, ext = '', ''
             for sp in resolutions[CONFIG['resolution']:]:
                 # TODO: 增加视频格式选择
                 for video in data['result']['videos']:
@@ -70,6 +71,7 @@ def parse_resource(resource):
                 else:
                     continue
                 break
+            assert ext, "近期中国大学 MOOC 接口变动，请临时使用 https://github.com/SigureMo/mooc-dl"
 
             if WORK_DIR.need_download(file_name + ext, CONFIG["overwrite"]):
                 FILES['renamer'].write(
@@ -79,6 +81,7 @@ def parse_resource(resource):
                 resource.ext = ext
         else:
             resolutions = ['Shd', 'Hd', 'Sd']
+            url, ext = '', ''
             for sp in resolutions[CONFIG['resolution']:]:
                 # TODO: 增加视频格式选择
                 # video_info = re.search(r'%sUrl="(?P<url>.*?(?P<ext>\.((m3u8)|(mp4)|(flv))).*?)"' % sp, res)
@@ -87,7 +90,8 @@ def parse_resource(resource):
                     url, ext = video_info.group('url', 'ext')
                     ext = '.' + ext
                     break
-            res_print(file_name + ext)
+            assert ext, "近期中国大学 MOOC 接口变动，请临时使用 https://github.com/SigureMo/mooc-dl"
+
             url = url.replace('v.stu.126.net', 'jdvodrvfb210d.vod.126.net')
             if CANDY.head(url, allow_redirects=True, timeout=20).status_code != 200:
                 url = url.replace('mooc-video', 'jdvodrvfb210d')
