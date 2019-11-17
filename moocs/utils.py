@@ -357,27 +357,36 @@ def course_dir(course_name, institution):
 
     return Resource.regex_file.sub('', '%s - %s' % (course_name, institution))
 
+def file_input(file, origin_text="", message=""):
+    """ 调用编辑器，以文件的形式获取输入 """
+
+    with open(file, 'w', encoding='utf8') as f:
+        f.write(origin_text)
+
+    if SYS == 'Windows':
+        os.startfile(file)
+    elif SYS == 'Linux':
+        subprocess.run('gedit "%s"' %
+                        file, shell=True, stdout=subprocess.PIPE)
+    elif SYS == 'Darwin':
+        subprocess.run('open -t "%s"' %
+                        file, shell=True, stdout=subprocess.PIPE)
+    input(message)
+    with open(file, 'r', encoding='utf8') as f:
+        res = f.read()
+    os.remove(file)
+    return res
+
 
 def parse_res_list(res_list, file, *operator):
     """传入一个 Resource 实例的列表，并传入一个临时文件名，将调出默认程序修改名字，并调用对象的 operation 方法"""
 
     if file:
-        with open(file, 'w', encoding='utf_8') as f:
-            for res in res_list:
-                f.write(str(res) + '\n')
-        if SYS == 'Windows':
-            os.startfile(file)
-        elif SYS == 'Linux':
-            subprocess.run('gedit "%s"' %
-                           file, shell=True, stdout=subprocess.PIPE)
-        elif SYS == 'Darwin':
-            subprocess.run('open -t "%s"' %
-                           file, shell=True, stdout=subprocess.PIPE)
-        input('修改完文件名后按回车继续。')
-        with open(file, encoding='utf_8') as f:
-            for res in res_list:
-                res.name = f.readline().rstrip('\n')
-                res.operation(*operator)
+        names_text = '\n'.join(list(map(lambda res: str(res), res_list)))
+        names = file_input(file, origin_text=names_text, message='修改完文件名后按回车继续。').split('\n')
+        for (res, name) in zip(res_list, names):
+            res.name = name
+            res.operation(*operator)
     else:
         for res in res_list:
             res.operation(*operator)
@@ -386,18 +395,26 @@ def parse_res_list(res_list, file, *operator):
 def store_cookies(mooc_type, restore=False):
     """存储并返回 Cookie 字典"""
 
-    def cookie_to_json():
+    def cookie_input():
+        # Mac 容易由于 Cookie 太多而阻塞
+        if SYS == 'Darwin':
+            cookies = file_input('cookies_tmp.txt', message='输入 Cookie 后保存，并回到终端回车继续...')
+        else:
+            print('输入 Cookie：')
+            cookies = input('> ')
+        return cookies
+
+    def cookie_to_json(raw_cookies):
         """将分号分隔的 Cookie 转为字典"""
 
         cookies_dict = {}
-        raw_cookies = input('> ')
         if not raw_cookies:
             return {}
         if raw_cookies[:7].lower() == 'cookie:':
             raw_cookies = raw_cookies[7:]
 
         for cookie in raw_cookies.split(';'):
-            key, value = cookie.lstrip().split("=", 1)
+            key, value = cookie.strip().split("=", 1)
             cookies_dict[key] = value
 
         return cookies_dict
@@ -410,8 +427,8 @@ def store_cookies(mooc_type, restore=False):
             cookies = json.load(cookies_file)
 
     if restore or not cookies.get(mooc_type):
-        print("输入 Cookie：")
-        cookies[mooc_type] = cookie_to_json()
+        raw_cookies = cookie_input()
+        cookies[mooc_type] = cookie_to_json(raw_cookies)
         with open(file_path, 'w') as f:
             json.dump(cookies, f, indent=2)
 
