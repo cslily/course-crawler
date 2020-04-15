@@ -52,8 +52,7 @@ def parse_resource(resource):
 
         ext = '.mp4'
         if WORK_DIR.need_download(file_name + ext, CONFIG["overwrite"]):
-            FILES['renamer'].write(
-                re.search(r'(\w+\.mp4)', video_url).group(1), file_name, ext)
+            FILES['renamer'].write(video_url.split('?')[0].split('/')[-1], file_name, ext)
             FILES['video'].write_string(video_url)
             VIDEOS.append((video_url, file_name+ext))
             resource.ext = ext
