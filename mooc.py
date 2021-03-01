@@ -4,36 +4,9 @@
 import os
 import sys
 import re
-import json
 import argparse
 
-
-def store_cookies(file_name):
-    """存储并返回 Cookie 字典"""
-
-    def cookie_to_json():
-        """将分号分隔的 Cookie 转为字典"""
-
-        cookies_dict = {}
-        raw_cookies = input('> ')
-
-        for cookie in raw_cookies.split(';'):
-            key, value = cookie.lstrip().split("=", 1)
-            cookies_dict[key] = value
-
-        return cookies_dict
-
-    file_name = os.path.join(sys.path[0], file_name)
-    if not os.path.isfile(file_name):
-        print("输入 Cookie：")
-        cookies = cookie_to_json()
-        with open(file_name, 'w') as f:
-            json.dump(cookies, f)
-
-    with open(file_name) as cookies_file:
-        cookies = json.load(cookies_file)
-
-    return cookies
+from moocs.utils import aria2_download, store_cookies
 
 
 def main():
@@ -41,46 +14,71 @@ def main():
 
     parser = argparse.ArgumentParser(description='Course Crawler')
     parser.add_argument('url', help='课程地址')
-    parser.add_argument('-c', action='store_true', help='执行任务的时候重新输入 cookies（待完成）')
-    parser.add_argument('-d', default=r'', help='下载目录')
-    parser.add_argument('-r', default='shd', help='视频清晰度')
+    parser.add_argument('-c', '--restore-cookies', action='store_true',
+                        help='执行任务的时候重新输入 cookies')
+    parser.add_argument('-d', '--dir', default=r'', help='下载目录')
+    parser.add_argument('-r', '--quality', default='shd', help='视频清晰度')
+    parser.add_argument('-w', '--overwrite',
+                        action='store_true', help='强制覆盖重新下载')
     parser.add_argument('--inter', action='store_true', help='交互式修改文件名')
-    parser.add_argument('--no-doc', action='store_false', help='不下载 PDF、Word 等文档')
+    parser.add_argument('--no-doc', action='store_false',
+                        help='不下载 PDF、Word 等文档')
     parser.add_argument('--no-sub', action='store_false', help='不下载字幕')
     parser.add_argument('--no-file', action='store_false', help='不下载附件')
     parser.add_argument('--no-text', action='store_false', help='不下载富文本')
-    parser.add_argument('--no-dpl', action='store_false', help='不生成播放列表')
+    parser.add_argument("--playlist-type", default="dpl",
+                        choices=["dpl", "m3u", "no"], help="播放列表类型，支持 dpl 和 m3u，输入 no 不生成播放列表")
+    parser.add_argument("--abs-path", action='store_true',
+                        help="播放列表路径使用绝对路径，默认为相对路径")
+    parser.add_argument('--aria2', action='store_true', help='自动调用aria2下载视频')
 
     args = parser.parse_args()
     resolutions = ['shd', 'hd', 'sd']
+    playlist_path_type = 'AP' if args.abs_path else 'RP'
 
-    config = {'doc': args.no_doc, 'sub': args.no_sub, 'file': args.no_file, 'text': args.no_text, 'dpl': args.no_dpl,
-              'cookies': args.c, 'rename': args.inter, 'dir': args.d, 'resolution': resolutions.index(args.r.lower())}
+    config = {'doc': args.no_doc, 'sub': args.no_sub, 'file': args.no_file, 'text': args.no_text,
+              'rename': args.inter, 'dir': args.dir, 'resolution': resolutions.index(args.quality.lower()),
+              'overwrite': args.overwrite, 'playlist_type': args.playlist_type, 'playlist_path_type': playlist_path_type,
+              'aria2': args.aria2}
 
-    if re.match(r'https?://www.icourse163.org/course/', args.url):
-        from mooc import icourse163
-        icourse163.start(args.url, config)
+    if re.match(r'https?://www.icourse163.org/(spoc/)?(course|learn)/', args.url):
+        from moocs import icourse163 as mooc
     elif re.match(r'https?://www.xuetangx.com/courses/.+/about', args.url):
-        from mooc import xuetangx
-        cookies = store_cookies('xuetangx.json')
-        xuetangx.start(args.url, config, cookies)
-    elif re.match(r'https?://mooc.study.163.com/course/', args.url):
-        from mooc import study_mooc
-        cookies = store_cookies('study_163_mooc.json')
-        study_mooc.start(args.url, config, cookies)
+        from moocs import xuetangx as mooc
+    elif re.match(r'https?://next.xuetangx.com/course/.+', args.url):
+        from moocs import xuetangx_next as mooc
+    elif re.match(r'https?://mooc.study.163.com/(course|learn)/', args.url):
+        from moocs import study_mooc as mooc
     elif re.match(r'https?://study.163.com/course/', args.url):
-        from mooc import study_163
-        study_163.start(args.url, config)
+        from moocs import study_163 as mooc
+    elif re.match(r'https?://open.163.com/(special|movie)/', args.url):
+        from moocs import open_163 as mooc
     elif re.match(r'https?://www.cnmooc.org/portal/course/', args.url):
-        from mooc import cnmooc
-        cookies = store_cookies('cnmooc.json')
-        cnmooc.start(args.url, config, cookies)
+        from moocs import cnmooc as mooc
     elif re.match(r'https?://www.icourses.cn/web/sword/portal/videoDetail', args.url):
-        from mooc import icourses
-        icourses.start(args.url, config)
+        from moocs import icourses as mooc
+    elif re.match(r'https?://www.icourses.cn/sCourse/course_\d+.html', args.url) or \
+            re.match(r'https?://www.icourses.cn/web/sword/portal/shareDetails\?cId=', args.url):
+        from moocs import icourses_share as mooc
+    elif re.match(r'https?://www.livedu.com.cn/ispace4.0/moocxjkc/toKcView.do\?kcid=', args.url):
+        from moocs import livedu as mooc
     else:
         print('课程地址有误！')
         sys.exit(1)
+
+    if mooc.need_cookies:
+        cookies = store_cookies(mooc.name, restore=args.restore_cookies)
+    else:
+        cookies = None
+
+    mooc.start(args.url, config, cookies)
+
+    # 视频下载
+    if config['aria2']:
+        workdir = mooc.exports["workdir"]
+        workdir.change('Videos')
+        videos = mooc.exports["videos"]
+        aria2_download(videos, workdir.path, overwrite=config["overwrite"])
 
 
 if __name__ == '__main__':

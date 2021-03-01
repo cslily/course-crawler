@@ -1,17 +1,27 @@
 # -*- coding: utf-8 -*-
 """中国大学MOOC"""
 
+import json
 import time
-from .utils import *
+import sys
 
+from moocs.utils import *
+from utils.crawler import Crawler
+
+name = "icourse163"
+need_cookies = True
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
+VIDEOS = []
+exports = {}
+__all__ = ["name", "need_cookies", "start", "exports"]
 
 
 def get_summary(url):
     """从课程主页面获取信息"""
 
+    url = url.replace('learn/', 'course/')
     res = CANDY.get(url).text
 
     term_id = re.search(r'termId : "(\d+)"', res).group(1)
@@ -20,6 +30,7 @@ def get_summary(url):
     dir_name = course_dir(*names[:2])
 
     print(dir_name)
+    CONFIG['term_id'] = term_id
     return term_id, dir_name
 
 
@@ -36,45 +47,85 @@ def parse_resource(resource):
 
     file_name = resource.file_name
     if resource.type == 'Video':
-        resolutions = ['Shd', 'Hd', 'Sd']
-        for sp in resolutions[CONFIG['resolution']:]:
-            # TODO: 增加视频格式选择
-            # video_info = re.search(r'%sUrl="(?P<url>.*?(?P<ext>\.((m3u8)|(mp4)|(flv))).*?)"' % sp, res)
-            video_info = re.search(r'(?P<ext>mp4)%sUrl="(?P<url>.*?\.(?P=ext).*?)"' % sp, res)
-            if video_info:
-                url, ext = video_info.group('url', 'ext')
-                ext = '.' + ext
+        if CONFIG["hasToken"]:
+            video_token = CANDY.post('https://www.icourse163.org/web/j/resourceRpcBean.getResourceToken.rpc?csrfKey='+CONFIG['token'], data={
+                'bizId': resource.meta[2],
+                'bizType': 1,
+                'contentType': 1,
+            }).json()['result']['videoSignDto']['signature']
+            data = CANDY.post('https://vod.study.163.com/eds/api/v1/vod/video', data={
+                'videoId': resource.meta[0],
+                'signature': video_token,
+                'clientType': '1'
+            }).json()
+
+            resolutions = [3, 2, 1]
+            url, ext = '', ''
+            for sp in resolutions[CONFIG['resolution']:]:
+                # TODO: 增加视频格式选择
+                for video in data['result']['videos']:
+                    if video['quality'] == sp and video['format'] == 'mp4':
+                        url = video['videoUrl']
+                        ext = '.mp4'
+                        break
+                else:
+                    continue
                 break
-        res_print(file_name + ext)
-        FILES['renamer'].write(re.search(r'(\w+\.((m3u8)|(mp4)|(flv)))', url).group(1), file_name, ext)
-        FILES['video'].write_string(url)
-        resource.ext = ext
+            assert ext, "近期中国大学 MOOC 接口变动，请临时使用 https://github.com/SigureMo/mooc-dl"
+
+            if WORK_DIR.need_download(file_name + ext, CONFIG["overwrite"]):
+                FILES['renamer'].write(
+                    re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
+                FILES['video'].write_string(url)
+                VIDEOS.append((url, file_name+ext))
+                resource.ext = ext
+        else:
+            resolutions = ['Shd', 'Hd', 'Sd']
+            url, ext = '', ''
+            for sp in resolutions[CONFIG['resolution']:]:
+                # TODO: 增加视频格式选择
+                # video_info = re.search(r'%sUrl="(?P<url>.*?(?P<ext>\.((m3u8)|(mp4)|(flv))).*?)"' % sp, res)
+                video_info = re.search(r'(?P<ext>mp4)%sUrl="(?P<url>.*?\.(?P=ext).*?)"' % sp, res)
+                if video_info:
+                    url, ext = video_info.group('url', 'ext')
+                    ext = '.' + ext
+                    break
+            assert ext, "近期中国大学 MOOC 接口变动，请临时使用 https://github.com/SigureMo/mooc-dl"
+
+            url = url.replace('v.stu.126.net', 'jdvodrvfb210d.vod.126.net')
+            if CANDY.head(url, allow_redirects=True, timeout=20).status_code != 200:
+                url = url.replace('mooc-video', 'jdvodrvfb210d')
+            if WORK_DIR.need_download(file_name + ext, CONFIG["overwrite"]):
+                FILES['renamer'].write(re.search(r'(\w+\.((m3u8)|(mp4)|(flv)))', url).group(1), file_name, ext)
+                FILES['video'].write_string(url)
+                VIDEOS.append((url, file_name+ext))
+                resource.ext = ext
 
         if not CONFIG['sub']:
             return
         subtitles = re.findall(r'name="(.+)";.*url="(.*?)"', res)
-        WORK_DIR.change('Videos')
         for subtitle in subtitles:
             if len(subtitles) == 1:
                 sub_name = file_name + '.srt'
             else:
-                subtitle_lang = subtitle[0].encode('utf_8').decode('unicode_escape')
+                subtitle_lang = subtitle[0].encode(
+                    'utf_8').decode('unicode_escape')
                 sub_name = file_name + '_' + subtitle_lang + '.srt'
-            res_print(sub_name)
+            if not WORK_DIR.need_download(sub_name, CONFIG["overwrite"]):
+                continue
             CANDY.download_bin(subtitle[1], WORK_DIR.file(sub_name))
 
     elif resource.type == 'Document':
-        if WORK_DIR.exist(file_name + '.pdf'):
+        if not WORK_DIR.need_download(file_name + '.pdf', CONFIG["overwrite"]):
             return
         pdf_url = re.search(r'textOrigUrl:"(.*?)"', res).group(1)
-        res_print(file_name + '.pdf')
         CANDY.download_bin(pdf_url, WORK_DIR.file(file_name + '.pdf'))
 
     elif resource.type == 'Rich':
-        if WORK_DIR.exist(file_name + '.html'):
+        if not WORK_DIR.need_download(file_name + '.html', CONFIG["overwrite"]):
             return
-        text = re.search(r'htmlContent:"(.*)",id', res.encode('utf_8').decode('unicode_escape'), re.S).group(1)
-        res_print(file_name + '.html')
+        text = re.search(r'htmlContent:"(.*)",id',
+                         res.encode('utf_8').decode('unicode_escape'), re.S).group(1)
         with open(WORK_DIR.file(file_name + '.html'), 'w', encoding='utf_8') as file:
             file.write(text)
 
@@ -95,18 +146,19 @@ def get_resource(term_id):
     res = CANDY.post('https://www.icourse163.org/dwr/call/plaincall/CourseBean.getMocTermDto.dwr',
                      data=post_data).text.encode('utf_8').decode('unicode_escape')
 
-    chapters = re.findall(r'homeworks=\w+;.+id=(\d+).+name="(.+)";', res)
+    chapters = re.findall(r'homeworks=\w+;.+id=(\d+).+name="([\s\S]+?)";', res)
     for chapter in chapters:
         counter.add(0)
         outline.write(chapter[1], counter, 0)
 
-        lessons = re.findall(r'chapterId=' + chapter[0] + r'.+contentType=1.+id=(\d+).+name="(.+)".+test', res)
+        lessons = re.findall(
+            r'chapterId=' + chapter[0] + r'.+contentId=null.+contentType=1.+id=(\d+).+name="([\s\S]+?)"', res)
         for lesson in lessons:
             counter.add(1)
             outline.write(lesson[1], counter, 1)
 
             videos = re.findall(r'contentId=(\d+).+contentType=(1).+id=(\d+).+lessonId=' +
-                                lesson[0] + r'.+name="(.+)"', res)
+                                lesson[0] + r'.+name="([\s\S]+?)"', res)
             for video in videos:
                 counter.add(2)
                 outline.write(video[3], counter, 2, sign='#')
@@ -114,7 +166,7 @@ def get_resource(term_id):
             counter.reset()
 
             pdfs = re.findall(r'contentId=(\d+).+contentType=(3).+id=(\d+).+lessonId=' +
-                              lesson[0] + r'.+name="(.+)"', res)
+                              lesson[0] + r'.+name="([\s\S]+?)"', res)
             for pdf in pdfs:
                 counter.add(2)
                 outline.write(pdf[3], counter, 2, sign='*')
@@ -123,7 +175,7 @@ def get_resource(term_id):
             counter.reset()
 
             rich_text = re.findall(r'contentId=(\d+).+contentType=(4).+id=(\d+).+jsonContent=(.+?);.+lessonId=' +
-                                   lesson[0] + r'.+name="(.+)"', res)
+                                   lesson[0] + r'.+name="([\s\S]]+?)"', res)
             for text in rich_text:
                 counter.add(2)
                 outline.write(text[4], counter, 2, sign='+')
@@ -137,17 +189,17 @@ def get_resource(term_id):
                         outline.write(file_name, counter, 2, sign='!')
 
                         WORK_DIR.change('Files')
-                        res_print(params['fileName'])
                         file_name = '%s %s' % (counter, file_name)
-                        CANDY.download_bin('https://www.icourse163.org/course/attachment.htm',
-                                           WORK_DIR.file(file_name), params=params)
+                        if WORK_DIR.need_download(file_name, CONFIG["overwrite"]):
+                            CANDY.download_bin('https://www.icourse163.org/course/attachment.htm',
+                                            WORK_DIR.file(file_name), params=params)
             counter.reset()
 
     if video_list:
         rename = WORK_DIR.file('Names.txt') if CONFIG['rename'] else False
         WORK_DIR.change('Videos')
-        if CONFIG['dpl']:
-            playlist = Playlist()
+        playlist = get_playlist(CONFIG["playlist_type"], CONFIG["playlist_path_type"])
+        if playlist is not None:
             parse_res_list(video_list, rename, parse_resource, playlist.write)
         else:
             parse_res_list(video_list, rename, parse_resource)
@@ -159,17 +211,29 @@ def get_resource(term_id):
         parse_res_list(rich_text_list, None, parse_resource)
 
 
-def start(url, config):
+def start(url, config, cookies):
     """调用接口函数"""
 
     global WORK_DIR
-
+    CANDY.set_cookies(cookies)
     CONFIG.update(config)
-    term_id, dir_name = get_summary(url)
 
+    if cookies.get('NTESSTUDYSI'):
+        CONFIG['hasToken'] = True
+        CONFIG['token'] = cookies.get('NTESSTUDYSI')
+    else:
+        CONFIG['hasToken'] = False
+
+    term_id, dir_name = get_summary(url)
     WORK_DIR = WorkingDir(CONFIG['dir'], dir_name)
     WORK_DIR.change('Videos')
-    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.bat'))
+    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['video'] = ClassicFile(WORK_DIR.file('Videos.txt'))
 
     get_resource(term_id)
+
+    exports.update({
+        "workdir": WORK_DIR,
+        "spider": CANDY,
+        "videos": VIDEOS
+    })

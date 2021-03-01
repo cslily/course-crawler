@@ -2,13 +2,22 @@
 """学堂在线"""
 
 import json
-from bs4 import BeautifulSoup
-from .utils import *
+import sys
 
+from bs4 import BeautifulSoup
+
+from moocs.utils import *
+from utils.crawler import Crawler
+
+name = "xuetangx"
+need_cookies = True
 BASE_URL = 'http://www.xuetangx.com'
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
+VIDEOS = []
+exports = {}
+__all__ = ["name", "need_cookies", "start", "exports"]
 
 
 def get_book(url):
@@ -21,9 +30,10 @@ def get_book(url):
         soup = BeautifulSoup(res, 'lxml')
         WORK_DIR.change('Books', str(shelf_count))
         for book_count, book in enumerate(soup.select('#booknav a'), 1):
-            res_print(book.string)
             file_name = Resource.file_to_save(book.string) + '.pdf'
-            CANDY.download_bin(BASE_URL + book['rel'][0], WORK_DIR.file(file_name))
+            if WORK_DIR.need_download(file_name, CONFIG["overwrite"]):
+                CANDY.download_bin(
+                    BASE_URL + book['rel'][0], WORK_DIR.file(file_name))
 
 
 def get_handout(url):
@@ -45,14 +55,16 @@ def get_video(video):
     """根据视频 ID 和文件名字获取视频信息"""
 
     file_name = video.file_name
-    res_print(file_name + '.mp4')
-    res = CANDY.get('https://xuetangx.com/videoid2source/' + video.meta).text
-    try:
-        video_url = json.loads(res)['sources']['quality20'][0]
-    except:
-        video_url = json.loads(res)['sources']['quality10'][0]
-    FILES['videos'].write_string(video_url)
-    FILES['renamer'].write(re.search(r'(\w+-[12]0.mp4)', video_url).group(1), file_name)
+    if WORK_DIR.need_download(file_name+'.mp4', CONFIG["overwrite"]):
+        res = CANDY.get('http://xuetangx.com/videoid2source/' + video.meta).text
+        try:
+            video_url = json.loads(res)['sources']['quality20'][0]
+        except:
+            video_url = json.loads(res)['sources']['quality10'][0]
+        FILES['videos'].write_string(video_url)
+        FILES['renamer'].write(
+            re.search(r'(\w+-[12]0.mp4)', video_url).group(1), file_name)
+        VIDEOS.append((video_url, file_name+".mp4"))
 
 
 def get_content(url):
@@ -61,7 +73,6 @@ def get_content(url):
     outline = Outline()
     counter = Counter()
     video_counter = Counter()
-    playlist = Playlist()
     video_list = []
 
     courseware = CANDY.get(url).text
@@ -118,7 +129,8 @@ def get_content(url):
                         # 替换连续空格或制表符为单个空格
                         video_name = block.h2.string.strip()
 
-                        outline.write(video_name, video_counter, level=3, sign='#')
+                        outline.write(video_name, video_counter,
+                                      level=3, sign='#')
 
                         if video_name == 'Video' or video_name == '视频' or video_name == '':
                             video_name = tab_title
@@ -135,7 +147,8 @@ def get_content(url):
     if video_list:
         WORK_DIR.change('Videos')
         rename = WORK_DIR.file('Names.txt') if CONFIG['rename'] else False
-        if CONFIG['dpl']:
+        playlist = get_playlist(CONFIG["playlist_type"], CONFIG["playlist_path_type"])
+        if playlist:
             parse_res_list(video_list, rename, playlist.write, get_video)
         else:
             parse_res_list(video_list, rename, get_video)
@@ -156,10 +169,12 @@ def get_subtitles(available, transcript, file_name):
         subtitle_url = base_subtitle_url + subtitle_desc
         CANDY.get(subtitle_url)
         if multi_subtitle:
-            sub_file_name = file_name + '_' + subtitle_desc.replace('_xuetangx', '') + '.srt'
+            sub_file_name = file_name + '_' + \
+                subtitle_desc.replace('_xuetangx', '') + '.srt'
         else:
             sub_file_name = file_name + '.srt'
-        subtitle = CANDY.get(subtitle_available_url.rstrip('available_translations') + 'download').content
+        subtitle = CANDY.get(subtitle_available_url.rstrip(
+            'available_translations') + 'download').content
         with open(WORK_DIR.file(sub_file_name), 'wb') as subtitle_file:
             subtitle_file.write(subtitle)
 
@@ -189,14 +204,14 @@ def start(url, config, cookies=None):
     if status.json()['login']:
         print('验证成功！')
     else:
-        print('Cookie 失效。请获取新的 Cookie 并删除 xuetangx.json。')
-        return
+        print('Cookie 失效。请获取新的 Cookie ')
+        sys.exit(1)
 
     course_name = get_summary(url)
 
     WORK_DIR = WorkingDir(CONFIG['dir'], course_name)
     WORK_DIR.change('Videos')
-    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.bat'))
+    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['videos'] = ClassicFile(WORK_DIR.file('Videos.txt'))
 
     handout = url.rstrip('about') + 'info'
@@ -208,3 +223,9 @@ def start(url, config, cookies=None):
 
     get_handout(handout)
     get_content(courseware)
+
+    exports.update({
+        "workdir": WORK_DIR,
+        "spider": CANDY,
+        "videos": VIDEOS
+    })

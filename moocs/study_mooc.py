@@ -2,16 +2,24 @@
 """网易云课堂 MOOC"""
 
 import time
-from .utils import *
 
+from moocs.utils import *
+from utils.crawler import Crawler
+
+name = "study_mooc"
+need_cookies = True
 CANDY = Crawler()
 CONFIG = {}
 FILES = {}
+VIDEOS = []
+exports = {}
+__all__ = ["name", "need_cookies", "start", "exports"]
 
 
 def get_summary(url):
     """从课程主页面获取信息"""
 
+    url = url.replace('learn/', 'course/')
     res = CANDY.get(url).text
 
     term_id = re.search(r'termId : "(\d+)"', res).group(1)
@@ -34,16 +42,20 @@ def get_announce(term_id):
                  'c0-param1': 'number:1', 'batchId': str(int(time.time() * 1000))}
     res = CANDY.post('https://mooc.study.163.com/dwr/call/plaincall/CourseBean.getAllAnnouncementByTerm.dwr',
                      data=post_data).text
-    announcements = re.findall(r'content="(.*?[^\\])".*title="(.*?[^\\])"', res)
+    announcements = re.findall(
+        r'content="(.*?[^\\])".*title="(.*?[^\\])"', res)
 
     with open('Announcements.html', 'w', encoding='utf-8') as announce_file:
         for announcement in announcements:
             # 公告内容
-            announce_content = announcement[0].encode('utf-8').decode('unicode_escape')
+            announce_content = announcement[0].encode(
+                'utf-8').decode('unicode_escape')
 
             # 公告标题
-            announce_title = announcement[1].encode('utf-8').decode('unicode_escape')
-            announce_file.write('<h1>' + announce_title + '</h1>\n' + announce_content + '\n')
+            announce_title = announcement[1].encode(
+                'utf-8').decode('unicode_escape')
+            announce_file.write('<h1>' + announce_title +
+                                '</h1>\n' + announce_content + '\n')
 
 
 def parse_resource(resource):
@@ -65,13 +77,25 @@ def parse_resource(resource):
             'videoId': resource.meta[0],
             'signature': signature,
             'clientType': '1'
-        }).text
-        mp4url = (re.search(r'videoUrl":"(http[^"]*?shd\.mp4.*?)"', data) or
-                  re.search(r'videoUrl":"(http[^"]*?hd\.mp4.*?)"', data) or
-                  re.search(r'videoUrl":"(http[^"]*?sd\.mp4.*?)"', data)).group(1)
-        res_print(file_name + '.mp4')
-        FILES['renamer'].write(re.search(r'(\w+\.mp4)', mp4url).group(1), file_name)
-        FILES['video'].write_string(mp4url)
+        }).json()
+
+        resolutions = [3, 2, 1]
+        for sp in resolutions[CONFIG['resolution']:]:
+            # TODO: 增加视频格式选择
+            for video in data['result']['videos']:
+                if video['quality'] == sp and video['format'] == 'mp4':
+                    url = video['videoUrl']
+                    ext = '.mp4'
+                    break
+            else:
+                continue
+            break
+        if WORK_DIR.need_download(file_name + ext, CONFIG["overwrite"]):
+            FILES['renamer'].write(
+                re.search(r'(\w+\.mp4)', url).group(1), file_name, ext)
+            FILES['video'].write_string(url)
+            VIDEOS.append((url, file_name+ext))
+            resource.ext = ext
 
         if not CONFIG['sub']:
             return
@@ -81,23 +105,23 @@ def parse_resource(resource):
             if len(subtitles) == 1:
                 sub_name = file_name + '.srt'
             else:
-                subtitle_lang = subtitle[0].encode('utf_8').decode('unicode_escape')
+                subtitle_lang = subtitle[0].encode(
+                    'utf_8').decode('unicode_escape')
                 sub_name = file_name + '_' + subtitle_lang + '.srt'
-            res_print(sub_name)
-            CANDY.download_bin(subtitle[1], WORK_DIR.file(sub_name))
+            if WORK_DIR.need_download(sub_name, CONFIG["overwrite"]):
+                CANDY.download_bin(subtitle[1], WORK_DIR.file(sub_name))
 
     elif resource.type == 'Document':
-        if WORK_DIR.exist(file_name + '.pdf'):
+        if not WORK_DIR.need_download(file_name + '.pdf', CONFIG["overwrite"]):
             return
         pdf_url = re.search(r'textOrigUrl:"(.*?)"', res).group(1)
-        res_print(file_name + '.pdf')
         CANDY.download_bin(pdf_url, WORK_DIR.file(file_name + '.pdf'))
 
     elif resource.type == 'Rich':
-        if WORK_DIR.exist(file_name + '.html'):
+        if not WORK_DIR.need_download(file_name + '.html', CONFIG["overwrite"]):
             return
-        text = re.search(r'htmlContent:"(.*)",id', res.encode('utf_8').decode('unicode_escape'), re.S).group(1)
-        res_print(file_name + '.html')
+        text = re.search(r'htmlContent:"(.*)",id',
+                         res.encode('utf_8').decode('unicode_escape'), re.S).group(1)
         with open(WORK_DIR.file(file_name + '.html'), 'w', encoding='utf_8') as file:
             file.write(text)
 
@@ -106,7 +130,6 @@ def get_resource(term_id):
     """获取各种资源"""
 
     outline = Outline()
-    playlist = Playlist()
     counter = Counter()
 
     video_list = []
@@ -125,7 +148,8 @@ def get_resource(term_id):
         counter.add(0)
         outline.write(chapter[1], counter, 0)
 
-        lessons = re.findall(r'chapterId=' + chapter[0] + r'.+contentType=1.+id=(\d+).+name="(.+)".+test', res)
+        lessons = re.findall(
+            r'chapterId=' + chapter[0] + r'.+contentType=1.+id=(\d+).+name="(.+)".+test', res)
         for lesson in lessons:
             counter.add(1)
             outline.write(lesson[1], counter, 1)
@@ -162,16 +186,17 @@ def get_resource(term_id):
                         outline.write(file_name, counter, 2, sign='!')
 
                         WORK_DIR.change('Files')
-                        res_print(params['fileName'])
                         file_name = '%s %s' % (counter, file_name)
-                        CANDY.download_bin('https://www.icourse163.org/course/attachment.htm',
-                                           WORK_DIR.file(file_name), params=params, cookies={'STUDY_SESS': None})
+                        if WORK_DIR.need_download(file_name, CONFIG["overwrite"]):
+                            CANDY.download_bin('https://www.icourse163.org/course/attachment.htm',
+                                            WORK_DIR.file(file_name), params=params, cookies={'STUDY_SESS': None})
             counter.reset()
 
     if video_list:
         rename = WORK_DIR.file('Names.txt') if CONFIG['rename'] else False
         WORK_DIR.change('Videos')
-        if CONFIG['dpl']:
+        playlist = get_playlist(CONFIG["playlist_type"], CONFIG["playlist_path_type"])
+        if playlist:
             parse_res_list(video_list, rename, playlist.write, parse_resource)
         else:
             parse_res_list(video_list, rename, parse_resource)
@@ -202,8 +227,14 @@ def start(url, config, cookies=None):
     get_announce(course_info[0])
 
     WORK_DIR.change('Videos')
-    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.bat'))
+    FILES['renamer'] = Renamer(WORK_DIR.file('Rename.{ext}'))
     FILES['video'] = ClassicFile(WORK_DIR.file('Videos.txt'))
 
     # 获得资源
     get_resource(course_info[0])
+
+    exports.update({
+        "workdir": WORK_DIR,
+        "spider": CANDY,
+        "videos": VIDEOS
+    })
